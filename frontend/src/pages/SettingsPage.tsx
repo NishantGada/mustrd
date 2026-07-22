@@ -49,7 +49,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="max-w-md">
+    <div className="mx-auto max-w-md">
       <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
 
       <div className="mt-6 rounded-[var(--radius)] border border-border bg-surface p-5">

@@ -63,9 +63,12 @@ export function GoalDetailPanel({ goal, boardId, onClose, onRequestUnlock }: Goa
   }
 
   return (
-    <div className="fixed inset-0 z-20 flex justify-end bg-[var(--overlay)]" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-20 grid place-items-center bg-[var(--overlay)] p-4"
+      onClick={onClose}
+    >
       <div
-        className="flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-border bg-surface p-5 shadow-[var(--shadow-pop)]"
+        className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-y-auto rounded-[var(--radius)] border border-border bg-surface p-6 shadow-[var(--shadow-pop)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-start justify-between gap-2">
@@ -95,7 +98,7 @@ export function GoalDetailPanel({ goal, boardId, onClose, onRequestUnlock }: Goa
             )}
           </div>
         ) : (
-          <>
+          <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-4">
               <Field label="Title" htmlFor="goal-title">
                 <Input id="goal-title" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -168,10 +171,10 @@ export function GoalDetailPanel({ goal, boardId, onClose, onRequestUnlock }: Goa
               </div>
             </div>
 
-            <div className="mt-6 border-t border-border pt-4">
+            <div className="border-t border-border pt-4 md:border-l md:border-t-0 md:pl-6 md:pt-0">
               <NotesSection goalId={goal.id} />
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

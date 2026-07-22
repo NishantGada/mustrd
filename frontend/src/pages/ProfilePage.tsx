@@ -8,7 +8,7 @@ export function ProfilePage() {
   const { data: metrics, isLoading, isError } = useMetrics()
 
   return (
-    <div>
+    <div className="mx-auto max-w-5xl">
       <div className="mb-6 flex items-center gap-3">
         <div className="grid h-12 w-12 place-items-center rounded-full bg-surface-2 text-lg font-semibold text-content">
           {user?.username.slice(0, 1).toUpperCase()}

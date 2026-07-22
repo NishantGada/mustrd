@@ -23,3 +23,11 @@ export function formatDueDate(iso: string): string {
     new Date(iso),
   )
 }
+
+/** "2026-07" -> "July 2026". */
+export function formatMonth(yyyyMm: string): string {
+  const [year, month] = yyyyMm.split('-').map(Number)
+  return new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
+    new Date(Date.UTC(year, month - 1, 1)),
+  )
+}

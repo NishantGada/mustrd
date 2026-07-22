@@ -1,26 +1,80 @@
-import { Link } from 'react-router-dom'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useMutation } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { z } from 'zod'
 
-import { ThemeToggle } from '@/components/ThemeToggle'
+import { Button } from '@/components/ui/Button'
+import { Field } from '@/components/ui/Field'
+import { Input } from '@/components/ui/Input'
+import { AuthCard } from '@/features/auth/AuthCard'
+import { loginRequest } from '@/features/auth/api'
+import { useAuth } from '@/features/auth/AuthContext'
+import { apiErrorMessage } from '@/lib/api'
+
+const schema = z.object({
+  email: z.string().email('Enter a valid email.'),
+  password: z.string().min(1, 'Enter your password.'),
+})
+type FormValues = z.infer<typeof schema>
 
 export function LoginPage() {
+  const { status, login } = useAuth()
+  const navigate = useNavigate()
+  const [formError, setFormError] = useState<string | null>(null)
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormValues>({ resolver: zodResolver(schema) })
+
+  const mutation = useMutation({
+    mutationFn: loginRequest,
+    onSuccess: async (token) => {
+      await login(token.access_token)
+      navigate('/', { replace: true })
+    },
+    onError: (error) => setFormError(apiErrorMessage(error, 'Sign in failed.')),
+  })
+
+  if (status === 'authed') return <Navigate to="/" replace />
+
+  const onSubmit = handleSubmit((values) => {
+    setFormError(null)
+    mutation.mutate(values)
+  })
+
   return (
-    <div className="grid min-h-dvh place-items-center px-4">
-      <div className="absolute right-4 top-4">
-        <ThemeToggle />
-      </div>
-      <div className="w-full max-w-sm rounded-[var(--radius)] border border-border bg-surface p-8 shadow-[var(--shadow-card)]">
-        <h1 className="text-2xl font-semibold tracking-tight">mustrd</h1>
-        <p className="mt-1 text-sm text-muted">Your personal goals board.</p>
-        <div className="mt-6 rounded-sm border border-dashed border-border p-4 text-sm text-muted">
-          Sign-in form arrives in the next step.
-        </div>
-        <p className="mt-6 text-sm text-muted">
+    <AuthCard
+      title="mustrd"
+      subtitle="Sign in to your goals board."
+      footer={
+        <>
           New here?{' '}
           <Link to="/register" className="text-accent hover:underline">
             Create an account
           </Link>
-        </p>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
+        <Field label="Email" htmlFor="email" error={errors.email?.message}>
+          <Input id="email" type="email" autoComplete="email" {...register('email')} />
+        </Field>
+        <Field label="Password" htmlFor="password" error={errors.password?.message}>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            {...register('password')}
+          />
+        </Field>
+        {formError && <p className="text-sm text-danger">{formError}</p>}
+        <Button type="submit" className="w-full" disabled={mutation.isPending}>
+          {mutation.isPending ? 'Signing in…' : 'Sign in'}
+        </Button>
+      </form>
+    </AuthCard>
   )
 }

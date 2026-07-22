@@ -10,9 +10,10 @@ import { useDeleteGoal } from './hooks'
 interface GoalCardProps {
   goal: Goal
   boardId: string
+  onOpen: (goalId: string) => void
 }
 
-export function GoalCard({ goal, boardId }: GoalCardProps) {
+export function GoalCard({ goal, boardId, onOpen }: GoalCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: goal.id,
     data: { type: 'goal', columnId: goal.column_id },
@@ -28,6 +29,7 @@ export function GoalCard({ goal, boardId }: GoalCardProps) {
       style={style}
       {...attributes}
       {...listeners}
+      onClick={() => onOpen(goal.id)}
       className={cn(
         'group relative cursor-grab touch-none rounded-sm border border-border bg-surface p-3',
         'shadow-[var(--shadow-card)] active:cursor-grabbing',

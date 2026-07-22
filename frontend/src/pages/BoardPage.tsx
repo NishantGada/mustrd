@@ -6,11 +6,12 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
 import { BoardColumn } from '@/features/board/BoardColumn'
 import { useBoardDetail, useBoardGoals, useBoards, useMoveGoal } from '@/features/board/hooks'
 import { groupByColumn } from '@/features/board/ordering'
+import { GoalDetailPanel } from '@/features/goal-detail/GoalDetailPanel'
 
 export function BoardPage() {
   const boardsQuery = useBoards()
@@ -18,9 +19,11 @@ export function BoardPage() {
   const detailQuery = useBoardDetail(boardId)
   const goalsQuery = useBoardGoals(boardId)
   const move = useMoveGoal(boardId ?? '')
+  const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null)
 
   const goals = useMemo(() => goalsQuery.data ?? [], [goalsQuery.data])
   const grouped = useMemo(() => groupByColumn(goals), [goals])
+  const selectedGoal = goals.find((g) => g.id === selectedGoalId) ?? null
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -74,10 +77,19 @@ export function BoardPage() {
               column={column}
               goals={grouped[column.id] ?? []}
               boardId={boardId!}
+              onOpenGoal={setSelectedGoalId}
             />
           ))}
         </div>
       </DndContext>
+
+      {selectedGoal && (
+        <GoalDetailPanel
+          goal={selectedGoal}
+          boardId={boardId!}
+          onClose={() => setSelectedGoalId(null)}
+        />
+      )}
     </div>
   )
 }

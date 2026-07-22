@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
-from app.routers import auth, boards, goals
+from app.routers import auth, boards, goals, security
 
 settings = get_settings()
 
@@ -27,3 +27,4 @@ app.include_router(auth.router)
 app.include_router(boards.router)
 app.include_router(boards.columns_router)
 app.include_router(goals.router)
+app.include_router(security.router)

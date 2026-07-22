@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/features/auth/AuthContext'
+import { UnlockIndicator } from '@/features/security/UnlockIndicator'
 import { cn } from '@/lib/cn'
 
 function navClass({ isActive }: { isActive: boolean }): string {
@@ -27,9 +28,13 @@ export function AppLayout() {
             <NavLink to="/profile" className={navClass}>
               Profile
             </NavLink>
+            <NavLink to="/settings" className={navClass}>
+              Settings
+            </NavLink>
           </nav>
           <div className="ml-auto flex items-center gap-2">
             {user && <span className="hidden text-sm text-muted sm:inline">{user.username}</span>}
+            <UnlockIndicator />
             <ThemeToggle />
             <Button variant="outline" size="sm" onClick={logout}>
               Log out

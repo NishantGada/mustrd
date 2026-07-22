@@ -12,6 +12,7 @@ import { BoardColumn } from '@/features/board/BoardColumn'
 import { useBoardDetail, useBoardGoals, useBoards, useMoveGoal } from '@/features/board/hooks'
 import { groupByColumn } from '@/features/board/ordering'
 import { GoalDetailPanel } from '@/features/goal-detail/GoalDetailPanel'
+import { UnlockModal } from '@/features/security/UnlockModal'
 
 export function BoardPage() {
   const boardsQuery = useBoards()
@@ -20,6 +21,7 @@ export function BoardPage() {
   const goalsQuery = useBoardGoals(boardId)
   const move = useMoveGoal(boardId ?? '')
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null)
+  const [showUnlockModal, setShowUnlockModal] = useState(false)
 
   const goals = useMemo(() => goalsQuery.data ?? [], [goalsQuery.data])
   const grouped = useMemo(() => groupByColumn(goals), [goals])
@@ -88,8 +90,11 @@ export function BoardPage() {
           goal={selectedGoal}
           boardId={boardId!}
           onClose={() => setSelectedGoalId(null)}
+          onRequestUnlock={() => setShowUnlockModal(true)}
         />
       )}
+
+      {showUnlockModal && <UnlockModal onClose={() => setShowUnlockModal(false)} />}
     </div>
   )
 }

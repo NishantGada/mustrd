@@ -49,13 +49,17 @@ class BoardService:
         return column
 
     # --- Boards ---
-    async def bootstrap_default(self, user: User) -> Board:
-        """Seed a new user's first board with the standard four columns."""
-        board = await self.repo.add(Board(user_id=user.id, name=DEFAULT_BOARD_NAME, position=0))
+    async def _seed_default_columns(self, board: Board) -> None:
+        """Give a freshly-created board the standard four columns."""
         for index, (name, kind) in enumerate(DEFAULT_COLUMNS):
             await self.repo.add_column(
                 BoardColumn(board_id=board.id, name=name, kind=kind, position=index)
             )
+
+    async def bootstrap_default(self, user: User) -> Board:
+        """Seed a new user's first board with the standard four columns."""
+        board = await self.repo.add(Board(user_id=user.id, name=DEFAULT_BOARD_NAME, position=0))
+        await self._seed_default_columns(board)
         return await self.repo.get_with_columns(board.id)  # type: ignore[return-value]
 
     async def list_boards(self, user: User) -> list[Board]:
@@ -75,6 +79,7 @@ class BoardService:
     async def create_board(self, data: BoardCreate, user: User) -> Board:
         position = await self.repo.count_for_user(user.id)
         board = await self.repo.add(Board(user_id=user.id, name=data.name, position=position))
+        await self._seed_default_columns(board)
         return board
 
     async def update_board(self, board_id: UUID, data: BoardUpdate, user: User) -> Board:

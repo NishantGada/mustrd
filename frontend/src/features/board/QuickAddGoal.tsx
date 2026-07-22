@@ -13,7 +13,10 @@ interface QuickAddGoalProps {
 export function QuickAddGoal({ boardId, columnId }: QuickAddGoalProps) {
   const [title, setTitle] = useState('')
   const [score, setScore] = useState(3)
+  const [focused, setFocused] = useState(false)
   const create = useCreateGoal(boardId)
+
+  const expanded = focused || title.length > 0
 
   function submit(e: React.FormEvent): void {
     e.preventDefault()
@@ -30,29 +33,35 @@ export function QuickAddGoal({ boardId, columnId }: QuickAddGoalProps) {
       <Input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="Add a goal…"
-        className="h-9"
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        placeholder="+ Add a goal"
+        className="h-9 border-transparent bg-transparent hover:bg-surface focus:bg-surface"
       />
-      <div className="flex items-center gap-2">
-        <label className="text-xs text-muted">Score</label>
-        <div className="flex gap-1">
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => setScore(n)}
-              className={cn(
-                'h-6 w-6 rounded text-xs font-medium',
-                score === n
-                  ? 'bg-primary text-primary-content'
-                  : 'bg-surface-2 text-muted hover:text-content',
-              )}
-            >
-              {n}
-            </button>
-          ))}
+      {expanded && (
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs text-muted">Score</span>
+          <div className="flex gap-1">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                type="button"
+                // Keep focus so the row doesn't collapse mid-selection.
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setScore(n)}
+                className={cn(
+                  'h-6 w-6 rounded text-xs font-medium transition-colors',
+                  score === n
+                    ? 'bg-primary text-primary-content'
+                    : 'bg-surface text-muted hover:text-content',
+                )}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </form>
   )
 }

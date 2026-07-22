@@ -70,9 +70,9 @@ export function BoardPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-xl font-semibold tracking-tight">{detailQuery.data?.name}</h1>
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight">{detailQuery.data?.name}</h1>
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex min-h-[calc(100dvh-12rem)] gap-5 overflow-x-auto pb-4">
           {columns.map((column) => (
             <BoardColumn
               key={column.id}

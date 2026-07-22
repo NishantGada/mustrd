@@ -33,12 +33,13 @@
   --danger: #b4433a;
   --success: #3f8f6b;
 
-  /* Score scale (1 = irrelevant → 5 = urgent). Muted, single-family intensity. */
-  --score-1: #9aa1ac;
-  --score-2: #6f8bb0;
-  --score-3: #5b8f86;
-  --score-4: #c08a3e;
-  --score-5: #b4574a;
+  /* Score scale (1 = irrelevant → 5 = urgent). Desaturated cool→warm ramp so it
+     reads as one calm family — no loud primaries. */
+  --score-1: #9aa2ad; /* slate — irrelevant */
+  --score-2: #7089ac; /* dusty blue — low */
+  --score-3: #5f8f86; /* sage — medium */
+  --score-4: #bd7d5f; /* clay — high */
+  --score-5: #b0564b; /* muted rust — urgent */
 
   /* Radii & elevation */
   --radius: 0.625rem;
@@ -70,11 +71,11 @@
   --danger: #e07b71;
   --success: #6fc09a;
 
-  --score-1: #7b828d;
-  --score-2: #7f9cc4;
-  --score-3: #6fae9f;
-  --score-4: #d6a052;
-  --score-5: #d97064;
+  --score-1: #858c98;
+  --score-2: #7d95bd;
+  --score-3: #6ea699;
+  --score-4: #cf9070;
+  --score-5: #d16b5f;
 
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3);
   --shadow-pop: 0 8px 28px rgb(0 0 0 / 0.5);

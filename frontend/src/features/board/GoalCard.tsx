@@ -31,16 +31,16 @@ export function GoalCard({ goal, boardId, onOpen }: GoalCardProps) {
       {...listeners}
       onClick={() => onOpen(goal.id)}
       className={cn(
-        'group relative cursor-grab touch-none rounded-sm border border-border bg-surface p-3',
-        'shadow-[var(--shadow-card)] active:cursor-grabbing',
+        'group relative cursor-grab touch-none rounded-[var(--radius-sm)] border border-border bg-surface p-3.5',
+        'shadow-[var(--shadow-card)] transition-colors hover:border-accent/40 active:cursor-grabbing',
         isDragging && 'opacity-50',
       )}
     >
-      <div className="flex items-start gap-2">
+      <div className="flex items-start gap-2.5">
         {goal.score != null && <ScoreBadge score={goal.score} className="mt-0.5" />}
         <p
           className={cn(
-            'flex-1 text-sm leading-snug text-content',
+            'flex-1 pr-4 text-sm leading-snug text-content',
             completed && 'text-muted line-through',
           )}
         >

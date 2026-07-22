@@ -19,7 +19,7 @@ export function AppLayout() {
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-10 border-b border-border bg-surface/80 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4">
+        <div className="flex h-16 items-center gap-6 px-6 lg:px-10">
           <span className="text-lg font-semibold tracking-tight">mustrd</span>
           <nav className="flex items-center gap-1">
             <NavLink to="/" className={navClass} end>
@@ -42,7 +42,7 @@ export function AppLayout() {
           </div>
         </div>
       </header>
-      <main className="w-full px-4 py-6">
+      <main className="w-full px-6 py-8 lg:px-10">
         <Outlet />
       </main>
     </div>

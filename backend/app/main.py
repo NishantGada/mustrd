@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
-from app.routers import auth
+from app.routers import auth, boards
 
 settings = get_settings()
 
@@ -24,3 +24,5 @@ async def health() -> dict[str, str]:
 
 
 app.include_router(auth.router)
+app.include_router(boards.router)
+app.include_router(boards.columns_router)

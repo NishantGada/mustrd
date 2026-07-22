@@ -6,6 +6,11 @@ export async function fetchBoards(): Promise<Board[]> {
   return data
 }
 
+export async function createBoard(name: string): Promise<Board> {
+  const { data } = await api.post<Board>('/boards', { name })
+  return data
+}
+
 export async function fetchBoardDetail(boardId: string): Promise<BoardWithColumns> {
   const { data } = await api.get<BoardWithColumns>(`/boards/${boardId}`)
   return data

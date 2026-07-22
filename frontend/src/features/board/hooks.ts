@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Goal } from '@/types'
 
 import {
+  createBoard,
   createGoal,
   deleteGoal,
   fetchBoardDetail,
@@ -24,6 +25,14 @@ export const boardKeys = {
 
 export function useBoards() {
   return useQuery({ queryKey: boardKeys.boards, queryFn: fetchBoards })
+}
+
+export function useCreateBoard() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => createBoard(name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: boardKeys.boards }),
+  })
 }
 
 export function useBoardDetail(boardId: string | undefined) {

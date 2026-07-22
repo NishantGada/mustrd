@@ -8,20 +8,26 @@ import {
 } from '@dnd-kit/core'
 import { useMemo, useState } from 'react'
 
+import { AddGoalModal } from '@/features/board/AddGoalModal'
 import { BoardColumn } from '@/features/board/BoardColumn'
+import { BoardSwitcher } from '@/features/board/BoardSwitcher'
 import { useBoardDetail, useBoardGoals, useBoards, useMoveGoal } from '@/features/board/hooks'
 import { groupByColumn } from '@/features/board/ordering'
+import { Button } from '@/components/ui/Button'
 import { GoalDetailPanel } from '@/features/goal-detail/GoalDetailPanel'
 import { UnlockModal } from '@/features/security/UnlockModal'
 
 export function BoardPage() {
   const boardsQuery = useBoards()
-  const boardId = boardsQuery.data?.[0]?.id
+  const boards = useMemo(() => boardsQuery.data ?? [], [boardsQuery.data])
+  const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null)
+  const boardId = selectedBoardId ?? boards[0]?.id
   const detailQuery = useBoardDetail(boardId)
   const goalsQuery = useBoardGoals(boardId)
   const move = useMoveGoal(boardId ?? '')
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null)
   const [showUnlockModal, setShowUnlockModal] = useState(false)
+  const [showAddGoal, setShowAddGoal] = useState(false)
 
   const goals = useMemo(() => goalsQuery.data ?? [], [goalsQuery.data])
   const grouped = useMemo(() => groupByColumn(goals), [goals])
@@ -70,7 +76,16 @@ export function BoardPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold tracking-tight">{detailQuery.data?.name}</h1>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <BoardSwitcher
+          boards={boards}
+          currentBoardId={boardId!}
+          onSelect={setSelectedBoardId}
+        />
+        <Button onClick={() => setShowAddGoal(true)} disabled={columns.length === 0}>
+          ＋ Add goal
+        </Button>
+      </div>
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
         <div className="flex min-h-[calc(100dvh-12rem)] gap-5 overflow-x-auto pb-4">
           {columns.map((column) => (
@@ -91,6 +106,14 @@ export function BoardPage() {
           boardId={boardId!}
           onClose={() => setSelectedGoalId(null)}
           onRequestUnlock={() => setShowUnlockModal(true)}
+        />
+      )}
+
+      {showAddGoal && (
+        <AddGoalModal
+          boardId={boardId!}
+          columns={columns}
+          onClose={() => setShowAddGoal(false)}
         />
       )}
 

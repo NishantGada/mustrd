@@ -5,7 +5,6 @@ import { cn } from '@/lib/cn'
 import type { Column, Goal } from '@/types'
 
 import { GoalCard } from './GoalCard'
-import { QuickAddGoal } from './QuickAddGoal'
 
 interface BoardColumnProps {
   column: Column
@@ -48,9 +47,11 @@ export function BoardColumn({ column, goals, boardId, onOpenGoal }: BoardColumnP
             <GoalCard key={goal.id} goal={goal} boardId={boardId} onOpen={onOpenGoal} />
           ))}
         </SortableContext>
-        <div className="mt-1">
-          <QuickAddGoal boardId={boardId} columnId={column.id} />
-        </div>
+        {goals.length === 0 && (
+          <div className="grid flex-1 place-items-center rounded-[var(--radius-sm)] border border-dashed border-border/60 py-8 text-xs text-faint">
+            Drop goals here
+          </div>
+        )}
       </div>
     </div>
   )

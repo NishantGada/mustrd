@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { Moon, Sun } from '@/components/icons'
 import { Button } from '@/components/ui/Button'
 import { applyMode, resolveInitialMode, type ThemeMode } from '@/lib/theme-mode'
 
@@ -20,7 +21,7 @@ export function ThemeToggle() {
       aria-label={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}
       title="Toggle theme"
     >
-      {mode === 'dark' ? '☀' : '☾'}
+      {mode === 'dark' ? <Sun width={16} height={16} /> : <Moon width={16} height={16} />}
     </Button>
   )
 }

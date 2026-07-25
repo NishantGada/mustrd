@@ -6,14 +6,19 @@ const baseURL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 export const api = axios.create({ baseURL })
 
-// Attach the JWT and, when present, the private-goal unlock grant.
+// Attach the JWT to every request.
 api.interceptors.request.use((config) => {
   const access = tokenStore.getAccess()
   if (access) config.headers.Authorization = `Bearer ${access}`
-  const unlock = tokenStore.getUnlock()
-  if (unlock) config.headers['X-Unlock-Token'] = unlock
   return config
 })
+
+/** Per-request unlock header for private goals. Passed explicitly only where a
+ *  specific goal is being revealed/edited — never globally — so the board and
+ *  everything else stay masked. */
+export function unlockConfig(unlockToken?: string) {
+  return unlockToken ? { headers: { 'X-Unlock-Token': unlockToken } } : undefined
+}
 
 /** Extract a human-friendly message from an Axios error's FastAPI `detail`. */
 export function apiErrorMessage(error: unknown, fallback = 'Something went wrong.'): string {

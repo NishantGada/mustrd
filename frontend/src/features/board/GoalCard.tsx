@@ -1,6 +1,8 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
+import { useConfirm } from '@/components/ConfirmProvider'
+import { Lock, X } from '@/components/icons'
 import { cn } from '@/lib/cn'
 import type { Goal } from '@/types'
 
@@ -14,6 +16,7 @@ interface GoalCardProps {
 }
 
 export function GoalCard({ goal, boardId, onOpen }: GoalCardProps) {
+  const confirm = useConfirm()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: goal.id,
     data: { type: 'goal', columnId: goal.column_id },
@@ -22,6 +25,16 @@ export function GoalCard({ goal, boardId, onOpen }: GoalCardProps) {
 
   const style = { transform: CSS.Translate.toString(transform), transition }
   const completed = Boolean(goal.completed_at)
+
+  async function remove(): Promise<void> {
+    const ok = await confirm({
+      title: 'Delete goal?',
+      message: `“${goal.title}” and its notes will be permanently deleted.`,
+      confirmLabel: 'Delete goal',
+      danger: true,
+    })
+    if (ok) del.mutate(goal.id)
+  }
 
   return (
     <div
@@ -36,31 +49,40 @@ export function GoalCard({ goal, boardId, onOpen }: GoalCardProps) {
         isDragging && 'opacity-50',
       )}
     >
-      <div className="flex items-start gap-2.5">
-        {goal.score != null && <ScoreBadge score={goal.score} className="mt-0.5" />}
-        <p
-          className={cn(
-            'flex-1 pr-4 text-sm leading-snug text-content',
-            completed && 'text-muted line-through',
-          )}
-        >
-          {goal.is_locked && <span className="mr-1">🔒</span>}
-          {goal.title}
-        </p>
-      </div>
-
-      {!goal.is_locked && (
-        <button
-          type="button"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => {
-            if (confirm('Delete this goal?')) del.mutate(goal.id)
-          }}
-          aria-label="Delete goal"
-          className="absolute right-1.5 top-1.5 hidden rounded px-1 text-xs text-faint hover:text-danger group-hover:block"
-        >
-          ✕
-        </button>
+      {goal.is_locked ? (
+        <div className="flex items-center gap-2 text-muted">
+          <Lock width={15} height={15} />
+          <span className="text-sm font-medium">Locked</span>
+          <span className="ml-auto text-[11px] text-faint opacity-0 transition-opacity group-hover:opacity-100">
+            Tap to unlock
+          </span>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-start gap-2.5">
+            {goal.score != null && <ScoreBadge score={goal.score} className="mt-0.5" />}
+            <p
+              className={cn(
+                'flex-1 pr-4 text-sm leading-snug text-content',
+                completed && 'text-muted line-through',
+              )}
+            >
+              {goal.title}
+            </p>
+          </div>
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+              void remove()
+            }}
+            aria-label="Delete goal"
+            className="absolute right-2 top-2 hidden text-faint hover:text-danger group-hover:block"
+          >
+            <X width={14} height={14} />
+          </button>
+        </>
       )}
     </div>
   )

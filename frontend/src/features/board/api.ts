@@ -1,4 +1,4 @@
-import { api } from '@/lib/api'
+import { api, unlockConfig } from '@/lib/api'
 import type { Board, BoardWithColumns, Goal } from '@/types'
 
 export async function fetchBoards(): Promise<Board[]> {
@@ -18,6 +18,12 @@ export async function fetchBoardDetail(boardId: string): Promise<BoardWithColumn
 
 export async function fetchBoardGoals(boardId: string): Promise<Goal[]> {
   const { data } = await api.get<Goal[]>(`/boards/${boardId}/goals`)
+  return data
+}
+
+/** Fetch a single goal. Pass an unlock token to reveal a private goal. */
+export async function fetchGoal(goalId: string, unlockToken?: string): Promise<Goal> {
+  const { data } = await api.get<Goal>(`/goals/${goalId}`, unlockConfig(unlockToken))
   return data
 }
 
@@ -54,11 +60,15 @@ export interface UpdateGoalBody {
   is_secured?: boolean
 }
 
-export async function updateGoal(goalId: string, body: UpdateGoalBody): Promise<Goal> {
-  const { data } = await api.patch<Goal>(`/goals/${goalId}`, body)
+export async function updateGoal(
+  goalId: string,
+  body: UpdateGoalBody,
+  unlockToken?: string,
+): Promise<Goal> {
+  const { data } = await api.patch<Goal>(`/goals/${goalId}`, body, unlockConfig(unlockToken))
   return data
 }
 
-export async function deleteGoal(goalId: string): Promise<void> {
-  await api.delete(`/goals/${goalId}`)
+export async function deleteGoal(goalId: string, unlockToken?: string): Promise<void> {
+  await api.delete(`/goals/${goalId}`, unlockConfig(unlockToken))
 }

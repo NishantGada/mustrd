@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 
 import { App } from '@/App'
+import { ConfirmProvider } from '@/components/ConfirmProvider'
 import { AuthProvider } from '@/features/auth/AuthContext'
 import { queryClient } from '@/lib/queryClient'
 import { applyMode, resolveInitialMode } from '@/lib/theme-mode'
@@ -17,7 +18,9 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <App />
+          <ConfirmProvider>
+            <App />
+          </ConfirmProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

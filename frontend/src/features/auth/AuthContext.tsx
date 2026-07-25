@@ -45,7 +45,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function logout(): void {
     tokenStore.clearAccess()
-    tokenStore.clearUnlock()
     setUser(null)
     setStatus('anon')
   }

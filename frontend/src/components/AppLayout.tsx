@@ -3,13 +3,14 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/features/auth/AuthContext'
-import { UnlockIndicator } from '@/features/security/UnlockIndicator'
 import { cn } from '@/lib/cn'
 
 function navClass({ isActive }: { isActive: boolean }): string {
   return cn(
-    'rounded px-3 py-1.5 text-sm font-medium transition-colors',
-    isActive ? 'bg-surface-2 text-content' : 'text-muted hover:text-content',
+    'relative py-1 text-sm font-medium transition-colors',
+    isActive
+      ? "text-content after:absolute after:-bottom-1 after:left-0 after:h-[2px] after:w-full after:rounded-full after:bg-accent after:content-['']"
+      : 'text-muted hover:text-content',
   )
 }
 
@@ -19,9 +20,9 @@ export function AppLayout() {
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-10 border-b border-border bg-surface/80 backdrop-blur">
-        <div className="flex h-16 items-center gap-6 px-6 lg:px-10">
+        <div className="flex h-16 items-center gap-8 px-6 lg:px-10">
           <span className="text-lg font-semibold tracking-tight">mustrd</span>
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-6">
             <NavLink to="/" className={navClass} end>
               Board
             </NavLink>
@@ -32,9 +33,8 @@ export function AppLayout() {
               Settings
             </NavLink>
           </nav>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-3">
             {user && <span className="hidden text-sm text-muted sm:inline">{user.username}</span>}
-            <UnlockIndicator />
             <ThemeToggle />
             <Button variant="outline" size="sm" onClick={logout}>
               Log out

@@ -9,6 +9,7 @@ import {
   fetchBoardDetail,
   fetchBoardGoals,
   fetchBoards,
+  fetchGoal,
   moveGoal,
   updateGoal,
   type CreateGoalBody,
@@ -21,6 +22,7 @@ export const boardKeys = {
   boards: ['boards'] as const,
   detail: (id: string) => ['board', id] as const,
   goals: (id: string) => ['goals', id] as const,
+  goal: (id: string) => ['goal', id] as const,
 }
 
 export function useBoards() {
@@ -51,6 +53,18 @@ export function useBoardGoals(boardId: string | undefined) {
   })
 }
 
+/** Fetch one goal, optionally revealed with an unlock token. Not cached across
+ *  unlock/lock states, so a locked goal is never served unmasked from cache. */
+export function useGoal(goalId: string | undefined, unlockToken?: string) {
+  return useQuery({
+    queryKey: [...boardKeys.goal(goalId ?? ''), Boolean(unlockToken)],
+    queryFn: () => fetchGoal(goalId!, unlockToken),
+    enabled: Boolean(goalId),
+    gcTime: 0,
+    staleTime: 0,
+  })
+}
+
 export function useCreateGoal(boardId: string) {
   const qc = useQueryClient()
   return useMutation({
@@ -59,19 +73,22 @@ export function useCreateGoal(boardId: string) {
   })
 }
 
-export function useUpdateGoal(boardId: string) {
+export function useUpdateGoal(boardId: string, unlockToken?: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ goalId, body }: { goalId: string; body: UpdateGoalBody }) =>
-      updateGoal(goalId, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: boardKeys.goals(boardId) }),
+      updateGoal(goalId, body, unlockToken),
+    onSuccess: (goal) => {
+      qc.invalidateQueries({ queryKey: boardKeys.goals(boardId) })
+      qc.invalidateQueries({ queryKey: boardKeys.goal(goal.id) })
+    },
   })
 }
 
-export function useDeleteGoal(boardId: string) {
+export function useDeleteGoal(boardId: string, unlockToken?: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (goalId: string) => deleteGoal(goalId),
+    mutationFn: (goalId: string) => deleteGoal(goalId, unlockToken),
     onSuccess: () => qc.invalidateQueries({ queryKey: boardKeys.goals(boardId) }),
   })
 }

@@ -8,12 +8,19 @@ import {
 } from '@dnd-kit/core'
 import { useMemo, useState } from 'react'
 
+import { Plus } from '@/components/icons'
+import { Button } from '@/components/ui/Button'
 import { AddGoalModal } from '@/features/board/AddGoalModal'
 import { BoardColumn } from '@/features/board/BoardColumn'
 import { BoardSwitcher } from '@/features/board/BoardSwitcher'
-import { useBoardDetail, useBoardGoals, useBoards, useMoveGoal } from '@/features/board/hooks'
+import {
+  useBoardDetail,
+  useBoardGoals,
+  useBoards,
+  useGoal,
+  useMoveGoal,
+} from '@/features/board/hooks'
 import { groupByColumn } from '@/features/board/ordering'
-import { Button } from '@/components/ui/Button'
 import { GoalDetailPanel } from '@/features/goal-detail/GoalDetailPanel'
 import { UnlockModal } from '@/features/security/UnlockModal'
 
@@ -25,15 +32,26 @@ export function BoardPage() {
   const detailQuery = useBoardDetail(boardId)
   const goalsQuery = useBoardGoals(boardId)
   const move = useMoveGoal(boardId ?? '')
+
+  // Opening a normal goal uses board data; a locked goal goes through an unlock
+  // prompt, then is fetched individually with the resulting per-goal token.
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null)
-  const [showUnlockModal, setShowUnlockModal] = useState(false)
+  const [unlockingGoalId, setUnlockingGoalId] = useState<string | null>(null)
+  const [revealed, setRevealed] = useState<{ goalId: string; token: string } | null>(null)
   const [showAddGoal, setShowAddGoal] = useState(false)
 
   const goals = useMemo(() => goalsQuery.data ?? [], [goalsQuery.data])
   const grouped = useMemo(() => groupByColumn(goals), [goals])
   const selectedGoal = goals.find((g) => g.id === selectedGoalId) ?? null
+  const revealedGoalQuery = useGoal(revealed?.goalId, revealed?.token)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+
+  function openGoal(goalId: string): void {
+    const goal = goals.find((g) => g.id === goalId)
+    if (goal?.is_locked) setUnlockingGoalId(goalId)
+    else setSelectedGoalId(goalId)
+  }
 
   function handleDragEnd(event: DragEndEvent): void {
     const { active, over } = event
@@ -77,13 +95,10 @@ export function BoardPage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between gap-4">
-        <BoardSwitcher
-          boards={boards}
-          currentBoardId={boardId!}
-          onSelect={setSelectedBoardId}
-        />
+        <BoardSwitcher boards={boards} currentBoardId={boardId!} onSelect={setSelectedBoardId} />
         <Button onClick={() => setShowAddGoal(true)} disabled={columns.length === 0}>
-          ＋ Add goal
+          <Plus width={16} height={16} />
+          Add goal
         </Button>
       </div>
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
@@ -94,7 +109,7 @@ export function BoardPage() {
               column={column}
               goals={grouped[column.id] ?? []}
               boardId={boardId!}
-              onOpenGoal={setSelectedGoalId}
+              onOpenGoal={openGoal}
             />
           ))}
         </div>
@@ -105,19 +120,31 @@ export function BoardPage() {
           goal={selectedGoal}
           boardId={boardId!}
           onClose={() => setSelectedGoalId(null)}
-          onRequestUnlock={() => setShowUnlockModal(true)}
+        />
+      )}
+
+      {unlockingGoalId && (
+        <UnlockModal
+          onClose={() => setUnlockingGoalId(null)}
+          onUnlocked={(token) => {
+            setRevealed({ goalId: unlockingGoalId, token })
+            setUnlockingGoalId(null)
+          }}
+        />
+      )}
+
+      {revealed && revealedGoalQuery.data && (
+        <GoalDetailPanel
+          goal={revealedGoalQuery.data}
+          boardId={boardId!}
+          unlockToken={revealed.token}
+          onClose={() => setRevealed(null)}
         />
       )}
 
       {showAddGoal && (
-        <AddGoalModal
-          boardId={boardId!}
-          columns={columns}
-          onClose={() => setShowAddGoal(false)}
-        />
+        <AddGoalModal boardId={boardId!} columns={columns} onClose={() => setShowAddGoal(false)} />
       )}
-
-      {showUnlockModal && <UnlockModal onClose={() => setShowUnlockModal(false)} />}
     </div>
   )
 }

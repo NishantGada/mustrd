@@ -5,10 +5,14 @@ import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { apiErrorMessage } from '@/lib/api'
 
-import { useUnlock } from './useUnlock'
+import { unlockRequest } from './api'
 
-export function UnlockModal({ onClose }: { onClose: () => void }) {
-  const { unlock } = useUnlock()
+interface UnlockModalProps {
+  onClose: () => void
+  onUnlocked: (token: string) => void
+}
+
+export function UnlockModal({ onClose, onUnlocked }: UnlockModalProps) {
   const [passcode, setPasscode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -18,8 +22,8 @@ export function UnlockModal({ onClose }: { onClose: () => void }) {
     setError(null)
     setPending(true)
     try {
-      await unlock(passcode)
-      onClose()
+      const { unlock_token } = await unlockRequest(passcode)
+      onUnlocked(unlock_token)
     } catch (err) {
       setError(apiErrorMessage(err, 'Incorrect passcode.'))
     } finally {
@@ -28,11 +32,9 @@ export function UnlockModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Modal title="Unlock private goals" onClose={onClose}>
-      <form onSubmit={submit} className="space-y-4">
-        <p className="text-sm text-muted">
-          Enter your passcode to reveal private goals for a little while.
-        </p>
+    <Modal title="Enter passcode" onClose={onClose}>
+      <form onSubmit={submit} className="space-y-5">
+        <p className="text-sm text-muted">This goal is private. Enter your passcode to view it.</p>
         <Input
           type="password"
           autoFocus
@@ -42,7 +44,7 @@ export function UnlockModal({ onClose }: { onClose: () => void }) {
         />
         {error && <p className="text-sm text-danger">{error}</p>}
         <Button type="submit" className="w-full" disabled={pending || !passcode}>
-          {pending ? 'Unlocking…' : 'Unlock'}
+          {pending ? 'Unlocking…' : 'View goal'}
         </Button>
       </form>
     </Modal>

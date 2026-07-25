@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { Check, ChevronDown, Plus } from '@/components/icons'
 import { Button } from '@/components/ui/Button'
 import { Field } from '@/components/ui/Field'
 import { Input } from '@/components/ui/Input'
@@ -26,10 +27,10 @@ export function BoardSwitcher({ boards, currentBoardId, onSelect }: BoardSwitche
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded px-1 py-0.5 text-2xl font-semibold tracking-tight text-content hover:text-accent"
+        className="flex items-center gap-2 py-0.5 text-2xl font-semibold tracking-tight text-content transition-colors hover:text-accent"
       >
         {current?.name ?? 'Board'}
-        <span className="text-sm text-muted">▾</span>
+        <ChevronDown width={20} height={20} className="text-muted" />
       </button>
 
       {open && (
@@ -51,7 +52,7 @@ export function BoardSwitcher({ boards, currentBoardId, onSelect }: BoardSwitche
                 )}
               >
                 {board.name}
-                {board.id === currentBoardId && <span className="text-accent">✓</span>}
+                {board.id === currentBoardId && <Check width={15} height={15} className="text-accent" />}
               </button>
             ))}
             <div className="my-1 border-t border-border" />
@@ -61,9 +62,10 @@ export function BoardSwitcher({ boards, currentBoardId, onSelect }: BoardSwitche
                 setOpen(false)
                 setCreating(true)
               }}
-              className="w-full px-3 py-2 text-left text-sm text-accent hover:bg-surface-2"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-accent hover:bg-surface-2"
             >
-              ＋ New board
+              <Plus width={15} height={15} />
+              New board
             </button>
           </div>
         </>

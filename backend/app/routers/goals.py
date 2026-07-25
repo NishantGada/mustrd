@@ -32,6 +32,17 @@ async def list_board_goals(
     return [GoalService.to_read(g, unlocked) for g in goals]
 
 
+@router.get("/goals/{goal_id}", response_model=GoalRead)
+async def get_goal(
+    goal_id: UUID,
+    user: User = Depends(get_current_user),
+    unlocked: bool = Depends(get_unlock_state),
+    db: AsyncSession = Depends(get_db),
+) -> GoalRead:
+    goal = await GoalService(db).get(goal_id, user)
+    return GoalService.to_read(goal, unlocked)
+
+
 @router.post("/goals", response_model=GoalRead, status_code=status.HTTP_201_CREATED)
 async def create_goal(
     data: GoalCreate,

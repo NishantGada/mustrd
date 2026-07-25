@@ -89,6 +89,10 @@ class GoalService:
         if goal.is_secured and not unlocked:
             raise _LOCKED
 
+    async def get(self, goal_id: UUID, user: User) -> Goal:
+        """Fetch a single owned goal. Masking is applied by the caller via to_read."""
+        return await self._owned_goal(goal_id, user)
+
     # --- Board listing ---
     async def list_board_goals(self, board_id: UUID, user: User) -> list[Goal]:
         board = await self.boards.get(board_id)

@@ -70,6 +70,11 @@ export function LoginPage() {
             {...register('password')}
           />
         </Field>
+        <div className="text-right">
+          <Link to="/forgot-password" className="text-xs text-muted hover:text-content">
+            Forgot password?
+          </Link>
+        </div>
         {formError && <p className="text-sm text-danger">{formError}</p>}
         <Button type="submit" className="w-full" disabled={mutation.isPending}>
           {mutation.isPending ? 'Signing in…' : 'Sign in'}

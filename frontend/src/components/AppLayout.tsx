@@ -32,6 +32,11 @@ export function AppLayout() {
             <NavLink to="/settings" className={navClass}>
               Settings
             </NavLink>
+            {user?.is_superuser && (
+              <NavLink to="/admin/requests" className={navClass}>
+                Requests
+              </NavLink>
+            )}
           </nav>
           <div className="ml-auto flex items-center gap-3">
             {user && <span className="hidden text-sm text-muted sm:inline">{user.username}</span>}

@@ -7,6 +7,15 @@ export interface User {
   email: string
   username: string
   has_security_passcode: boolean
+  is_superuser: boolean
+  created_at: string
+}
+
+export interface ResetRequest {
+  id: string
+  user_email: string
+  user_username: string
+  status: 'pending' | 'rejected' | 'resolved'
   created_at: string
 }
 

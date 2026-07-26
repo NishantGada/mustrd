@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String
+from sqlalchemy import Boolean, String, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDMixin
@@ -23,6 +23,11 @@ class User(UUIDMixin, TimestampMixin, Base):
     # Global passcode for the "private goals" feature. Nullable = not set yet.
     # Stored hashed, exactly like a password — never plaintext.
     security_passcode_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Admin who reviews password-reset requests. Set via the create_superuser CLI.
+    is_superuser: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
 
     boards: Mapped[list[Board]] = relationship(
         back_populates="owner", cascade="all, delete-orphan", passive_deletes=True

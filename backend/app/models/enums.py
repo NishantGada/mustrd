@@ -16,3 +16,10 @@ class GoalEventType(str, Enum):
     MOVED = "moved"
     COMPLETED = "completed"
     REOPENED = "reopened"
+
+
+class ResetRequestStatus(str, Enum):
+    """Lifecycle of a password-reset request handled by the superuser."""
+    PENDING = "pending"
+    REJECTED = "rejected"
+    RESOLVED = "resolved"

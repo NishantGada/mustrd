@@ -5,6 +5,16 @@ from app.models.column import BoardColumn
 from app.models.event import GoalEvent
 from app.models.goal import Goal
 from app.models.note import GoalNote
+from app.models.password_reset import PasswordResetRequest
 from app.models.user import User
 
-__all__ = ["Base", "User", "Board", "BoardColumn", "Goal", "GoalNote", "GoalEvent"]
+__all__ = [
+    "Base",
+    "User",
+    "Board",
+    "BoardColumn",
+    "Goal",
+    "GoalNote",
+    "GoalEvent",
+    "PasswordResetRequest",
+]

@@ -31,6 +31,7 @@ class UserRead(BaseModel):
     has_security_passcode: bool = Field(
         description="Whether the user has set a passcode for private goals."
     )
+    is_superuser: bool
     created_at: datetime
 
     @classmethod
@@ -40,6 +41,7 @@ class UserRead(BaseModel):
             email=user.email,
             username=user.username,
             has_security_passcode=user.security_passcode_hash is not None,
+            is_superuser=user.is_superuser,
             created_at=user.created_at,
         )
 

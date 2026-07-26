@@ -43,6 +43,15 @@ async def get_current_user(
     return user
 
 
+async def get_current_superuser(current_user: User = Depends(get_current_user)) -> User:
+    """Guard for admin-only endpoints (password-reset review)."""
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Administrator access required."
+        )
+    return current_user
+
+
 # Marker claim distinguishing an unlock grant from a normal login token.
 UNLOCK_SCOPE = "private-goals-unlock"
 

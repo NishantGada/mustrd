@@ -12,11 +12,15 @@ Reads DATABASE_URL from backend/.env.
 """
 import asyncio
 import sys
+from pathlib import Path
 
-from app.core.database import SessionLocal
-from app.core.security import hash_secret
-from app.models.user import User
-from app.repositories.user_repository import UserRepository
+# Make `app` importable no matter where this script is invoked from.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from app.core.database import SessionLocal  # noqa: E402
+from app.core.security import hash_secret  # noqa: E402
+from app.models.user import User  # noqa: E402
+from app.repositories.user_repository import UserRepository  # noqa: E402
 
 MIN_PASSWORD_LENGTH = 8
 

@@ -1,5 +1,7 @@
 # --- Deferred features / private planning (do not commit) ---
 FUTURE.md
+USERS.md
+FEATURES.md
 
 # --- Python / backend ---
 backend/.venv/

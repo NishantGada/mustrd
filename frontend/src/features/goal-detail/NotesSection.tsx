@@ -27,13 +27,13 @@ export function NotesSection({ goalId, unlockToken }: NotesSectionProps) {
 
   return (
     <div>
-      <h3 className="mb-3 text-sm font-semibold text-content">Notes</h3>
-      <form onSubmit={submit} className="mb-4 space-y-2">
+      <h3 className="mb-4 text-sm font-semibold text-content">Notes</h3>
+      <form onSubmit={submit} className="mb-5 space-y-2.5">
         <Textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Leave a note for future-you…"
-          rows={3}
+          rows={4}
         />
         <Button type="submit" size="sm" variant="outline" disabled={addNote.isPending}>
           Add note
@@ -42,7 +42,7 @@ export function NotesSection({ goalId, unlockToken }: NotesSectionProps) {
 
       {notesQuery.isLoading && <p className="text-xs text-muted">Loading notes…</p>}
 
-      <ul className="space-y-2.5">
+      <ul className="space-y-3">
         {notesQuery.data
           ?.slice()
           // Latest first — ISO 8601 UTC strings sort chronologically.

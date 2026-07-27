@@ -20,7 +20,7 @@ export function BoardColumn({ column, goals, boardId, onOpenGoal }: BoardColumnP
   })
 
   return (
-    <div className="flex w-80 shrink-0 flex-col rounded-[var(--radius)] border border-border bg-surface-2/40">
+    <div className="flex min-w-[15rem] flex-1 flex-col rounded-[var(--radius)] border border-border bg-surface-2/40">
       <div className="flex items-center justify-between px-4 pb-3 pt-4">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-content">{column.name}</span>

@@ -10,7 +10,7 @@ interface BoardColumnProps {
   column: Column
   goals: Goal[]
   boardId: string
-  onOpenGoal: (goalId: string) => void
+  onOpenGoal: (goal: Goal) => void
 }
 
 export function BoardColumn({ column, goals, boardId, onOpenGoal }: BoardColumnProps) {

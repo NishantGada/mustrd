@@ -1,5 +1,5 @@
 import { api, unlockConfig } from '@/lib/api'
-import type { Board, BoardWithColumns, Column, ColumnKind, Goal } from '@/types'
+import type { Board, BoardWithColumns, Column, ColumnKind, Goal, GoalWithContext } from '@/types'
 
 export async function fetchBoards(): Promise<Board[]> {
   const { data } = await api.get<Board[]>('/boards')
@@ -61,6 +61,12 @@ export async function fetchBoardGoals(boardId: string): Promise<Goal[]> {
 /** Fetch a single goal. Pass an unlock token to reveal a private goal. */
 export async function fetchGoal(goalId: string, unlockToken?: string): Promise<Goal> {
   const { data } = await api.get<Goal>(`/goals/${goalId}`, unlockConfig(unlockToken))
+  return data
+}
+
+/** Every goal across all boards (with column/board context) for the motherboard. */
+export async function fetchAllGoals(): Promise<GoalWithContext[]> {
+  const { data } = await api.get<GoalWithContext[]>('/goals/all')
   return data
 }
 

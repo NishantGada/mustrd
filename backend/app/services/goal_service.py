@@ -96,6 +96,7 @@ class GoalService:
         return GoalWithContext(
             **base.model_dump(),
             column_name=goal.column.name,
+            column_position=goal.column.position,
             board_id=goal.column.board_id,
             board_name=goal.column.board.name,
         )

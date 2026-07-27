@@ -56,6 +56,13 @@ export interface Goal {
   updated_at: string
 }
 
+export interface GoalWithContext extends Goal {
+  column_name: string
+  column_position: number
+  board_id: string
+  board_name: string
+}
+
 export interface Note {
   id: string
   goal_id: string

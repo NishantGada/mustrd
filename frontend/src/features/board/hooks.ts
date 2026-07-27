@@ -11,6 +11,7 @@ import {
   deleteBoard,
   deleteColumn,
   deleteGoal,
+  fetchAllGoals,
   fetchBoardDetail,
   fetchBoardGoals,
   fetchBoards,
@@ -121,23 +122,35 @@ export function useBoardGoals(boardId: string | undefined) {
   })
 }
 
-/** Fetch one goal, optionally revealed with an unlock token. Not cached across
- *  unlock/lock states, so a locked goal is never served unmasked from cache. */
-export function useGoal(goalId: string | undefined, unlockToken?: string) {
+/** All goals across every board — powers the aggregate "motherboard" view. */
+export function useAllGoals(enabled: boolean) {
+  return useQuery({ queryKey: ['all-goals'], queryFn: fetchAllGoals, enabled })
+}
+
+/** Fetch one goal, optionally revealed with an unlock token. `initialData` lets
+ *  a click open the detail instantly (from board/aggregate cache) then refetch.
+ *  Not cached across unlock/lock states, so a locked goal is never served unmasked. */
+export function useGoal(goalId: string | undefined, unlockToken?: string, initialData?: Goal) {
   return useQuery({
     queryKey: [...boardKeys.goal(goalId ?? ''), Boolean(unlockToken)],
     queryFn: () => fetchGoal(goalId!, unlockToken),
     enabled: Boolean(goalId),
+    initialData,
     gcTime: 0,
     staleTime: 0,
   })
 }
 
+const ALL_GOALS_KEY = ['all-goals'] as const
+
 export function useCreateGoal(boardId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: CreateGoalBody) => createGoal(body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: boardKeys.goals(boardId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: boardKeys.goals(boardId) })
+      qc.invalidateQueries({ queryKey: ALL_GOALS_KEY })
+    },
   })
 }
 
@@ -149,6 +162,7 @@ export function useUpdateGoal(boardId: string, unlockToken?: string) {
     onSuccess: (goal) => {
       qc.invalidateQueries({ queryKey: boardKeys.goals(boardId) })
       qc.invalidateQueries({ queryKey: boardKeys.goal(goal.id) })
+      qc.invalidateQueries({ queryKey: ALL_GOALS_KEY })
     },
   })
 }
@@ -157,7 +171,10 @@ export function useDeleteGoal(boardId: string, unlockToken?: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (goalId: string) => deleteGoal(goalId, unlockToken),
-    onSuccess: () => qc.invalidateQueries({ queryKey: boardKeys.goals(boardId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: boardKeys.goals(boardId) })
+      qc.invalidateQueries({ queryKey: ALL_GOALS_KEY })
+    },
   })
 }
 

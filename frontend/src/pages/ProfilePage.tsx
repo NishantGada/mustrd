@@ -1,11 +1,20 @@
+import { useState } from 'react'
+
 import { useAuth } from '@/features/auth/AuthContext'
+import { useBoards } from '@/features/board/hooks'
 import { useMetrics } from '@/features/metrics/hooks'
 import { StatTile } from '@/features/metrics/StatTile'
+import { cn } from '@/lib/cn'
 import { formatMonth } from '@/lib/dates'
 
 export function ProfilePage() {
   const { user } = useAuth()
-  const { data: metrics, isLoading, isError } = useMetrics()
+  const boardsQuery = useBoards()
+  const boards = boardsQuery.data ?? []
+  const [scope, setScope] = useState<string>('all') // 'all' or a board id
+  const { data: metrics, isLoading, isError } = useMetrics(scope === 'all' ? undefined : scope)
+
+  const scopes = [{ id: 'all', name: 'All boards' }, ...boards]
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -17,6 +26,24 @@ export function ProfilePage() {
           <h1 className="text-xl font-semibold tracking-tight">{user?.username}</h1>
           <p className="text-sm text-muted">{user?.email}</p>
         </div>
+      </div>
+
+      <div className="mb-5 flex flex-wrap gap-2">
+        {scopes.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => setScope(s.id)}
+            className={cn(
+              'rounded-full border px-3 py-1 text-sm transition-colors',
+              scope === s.id
+                ? 'border-transparent bg-primary text-primary-content'
+                : 'border-border text-muted hover:text-content',
+            )}
+          >
+            {s.name}
+          </button>
+        ))}
       </div>
 
       {isLoading && <p className="text-sm text-muted">Loading your metrics…</p>}

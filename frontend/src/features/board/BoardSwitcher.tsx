@@ -11,6 +11,9 @@ import type { Board } from '@/types'
 
 import { useCreateBoard } from './hooks'
 
+/** Sentinel for the aggregate "motherboard" (all boards) selection. */
+export const ALL_BOARDS = '__all__'
+
 interface BoardSwitcherProps {
   boards: Board[]
   currentBoardId: string
@@ -20,7 +23,14 @@ interface BoardSwitcherProps {
 export function BoardSwitcher({ boards, currentBoardId, onSelect }: BoardSwitcherProps) {
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)
+  const isAll = currentBoardId === ALL_BOARDS
   const current = boards.find((b) => b.id === currentBoardId)
+  const label = isAll ? 'All boards' : (current?.name ?? 'Board')
+
+  function choose(id: string): void {
+    onSelect(id)
+    setOpen(false)
+  }
 
   return (
     <div className="relative">
@@ -29,7 +39,7 @@ export function BoardSwitcher({ boards, currentBoardId, onSelect }: BoardSwitche
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-2 py-0.5 text-2xl font-semibold tracking-tight text-content transition-colors hover:text-accent"
       >
-        {current?.name ?? 'Board'}
+        {label}
         <ChevronDown width={20} height={20} className="text-muted" />
       </button>
 
@@ -38,14 +48,23 @@ export function BoardSwitcher({ boards, currentBoardId, onSelect }: BoardSwitche
           {/* Click-away layer */}
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div className="absolute left-0 top-full z-20 mt-2 w-64 overflow-hidden rounded-[var(--radius)] border border-border bg-surface py-1 shadow-[var(--shadow-pop)]">
+            <button
+              type="button"
+              onClick={() => choose(ALL_BOARDS)}
+              className={cn(
+                'flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-surface-2',
+                isAll ? 'text-content' : 'text-muted',
+              )}
+            >
+              All boards
+              {isAll && <Check width={15} height={15} className="text-accent" />}
+            </button>
+            <div className="my-1 border-t border-border" />
             {boards.map((board) => (
               <button
                 key={board.id}
                 type="button"
-                onClick={() => {
-                  onSelect(board.id)
-                  setOpen(false)
-                }}
+                onClick={() => choose(board.id)}
                 className={cn(
                   'flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-surface-2',
                   board.id === currentBoardId ? 'text-content' : 'text-muted',

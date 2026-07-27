@@ -52,6 +52,7 @@ class GoalRead(BaseModel):
 class GoalWithContext(GoalRead):
     """A goal plus its column/board names — for the aggregate 'all boards' view."""
     column_name: str
+    column_position: int
     board_id: UUID
     board_name: str
 

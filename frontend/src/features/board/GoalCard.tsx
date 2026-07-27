@@ -12,7 +12,7 @@ import { useDeleteGoal } from './hooks'
 interface GoalCardProps {
   goal: Goal
   boardId: string
-  onOpen: (goalId: string) => void
+  onOpen: (goal: Goal) => void
 }
 
 export function GoalCard({ goal, boardId, onOpen }: GoalCardProps) {
@@ -42,7 +42,7 @@ export function GoalCard({ goal, boardId, onOpen }: GoalCardProps) {
       style={style}
       {...attributes}
       {...listeners}
-      onClick={() => onOpen(goal.id)}
+      onClick={() => onOpen(goal)}
       className={cn(
         'group relative cursor-grab touch-none rounded-[var(--radius-sm)] border border-border bg-surface p-3.5',
         'shadow-[var(--shadow-card)] transition-colors hover:border-accent/40 active:cursor-grabbing',

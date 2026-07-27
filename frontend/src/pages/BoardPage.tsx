@@ -12,7 +12,8 @@ import { Plus } from '@/components/icons'
 import { Button } from '@/components/ui/Button'
 import { AddGoalModal } from '@/features/board/AddGoalModal'
 import { BoardColumn } from '@/features/board/BoardColumn'
-import { BoardSwitcher } from '@/features/board/BoardSwitcher'
+import { ALL_BOARDS, BoardSwitcher } from '@/features/board/BoardSwitcher'
+import { MotherBoard } from '@/features/board/MotherBoard'
 import {
   useBoardDetail,
   useBoardGoals,
@@ -23,34 +24,34 @@ import {
 import { groupByColumn } from '@/features/board/ordering'
 import { GoalDetailPanel } from '@/features/goal-detail/GoalDetailPanel'
 import { UnlockModal } from '@/features/security/UnlockModal'
+import type { Goal } from '@/types'
 
 export function BoardPage() {
   const boardsQuery = useBoards()
   const boards = useMemo(() => boardsQuery.data ?? [], [boardsQuery.data])
-  const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null)
-  const boardId = selectedBoardId ?? boards[0]?.id
+  const [selection, setSelection] = useState<string | null>(null) // board id | ALL_BOARDS | null(=first)
+  const isAll = selection === ALL_BOARDS
+  const boardId = isAll ? undefined : (selection ?? boards[0]?.id)
+
   const detailQuery = useBoardDetail(boardId)
   const goalsQuery = useBoardGoals(boardId)
   const move = useMoveGoal(boardId ?? '')
 
-  // Opening a normal goal uses board data; a locked goal goes through an unlock
-  // prompt, then is fetched individually with the resulting per-goal token.
-  const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null)
-  const [unlockingGoalId, setUnlockingGoalId] = useState<string | null>(null)
-  const [revealed, setRevealed] = useState<{ goalId: string; token: string } | null>(null)
+  // Unified goal open/unlock across the board and the motherboard.
+  const [detail, setDetail] = useState<{ goal?: Goal; goalId: string; boardId: string; token?: string } | null>(null)
+  const [unlocking, setUnlocking] = useState<{ goalId: string; boardId: string } | null>(null)
   const [showAddGoal, setShowAddGoal] = useState(false)
+
+  const goalQuery = useGoal(detail?.goalId, detail?.token, detail?.goal)
 
   const goals = useMemo(() => goalsQuery.data ?? [], [goalsQuery.data])
   const grouped = useMemo(() => groupByColumn(goals), [goals])
-  const selectedGoal = goals.find((g) => g.id === selectedGoalId) ?? null
-  const revealedGoalQuery = useGoal(revealed?.goalId, revealed?.token)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
-  function openGoal(goalId: string): void {
-    const goal = goals.find((g) => g.id === goalId)
-    if (goal?.is_locked) setUnlockingGoalId(goalId)
-    else setSelectedGoalId(goalId)
+  function openGoal(goal: Goal, forBoardId: string): void {
+    if (goal.is_locked) setUnlocking({ goalId: goal.id, boardId: forBoardId })
+    else setDetail({ goal, goalId: goal.id, boardId: forBoardId })
   }
 
   function handleDragEnd(event: DragEndEvent): void {
@@ -58,13 +59,11 @@ export function BoardPage() {
     if (!over) return
     const activeId = String(active.id)
     const overId = String(over.id)
-
     const activeGoal = goals.find((g) => g.id === activeId)
     if (!activeGoal) return
 
     let targetColumnId: string
     let targetIndex: number
-
     if (overId.startsWith('col:')) {
       targetColumnId = overId.slice(4)
       targetIndex = grouped[targetColumnId]?.length ?? 0
@@ -83,11 +82,9 @@ export function BoardPage() {
     move.mutate({ goalId: activeId, target_column_id: targetColumnId, position: targetIndex })
   }
 
-  if (boardsQuery.isLoading || detailQuery.isLoading || goalsQuery.isLoading) {
-    return <p className="text-sm text-muted">Loading your board…</p>
-  }
-  if (boardsQuery.isError || detailQuery.isError || goalsQuery.isError) {
-    return <p className="text-sm text-danger">Couldn’t load your board. Try refreshing.</p>
+  if (boardsQuery.isLoading) return <p className="text-sm text-muted">Loading your board…</p>
+  if (boardsQuery.isError) {
+    return <p className="text-sm text-danger">Couldn’t load your boards. Try refreshing.</p>
   }
 
   const columns = [...(detailQuery.data?.columns ?? [])].sort((a, b) => a.position - b.position)
@@ -95,55 +92,60 @@ export function BoardPage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between gap-4">
-        <BoardSwitcher boards={boards} currentBoardId={boardId!} onSelect={setSelectedBoardId} />
-        <Button onClick={() => setShowAddGoal(true)} disabled={columns.length === 0}>
-          <Plus width={16} height={16} />
-          Add goal
-        </Button>
+        <BoardSwitcher
+          boards={boards}
+          currentBoardId={isAll ? ALL_BOARDS : (boardId ?? '')}
+          onSelect={setSelection}
+        />
+        {!isAll && (
+          <Button onClick={() => setShowAddGoal(true)} disabled={columns.length === 0}>
+            <Plus width={16} height={16} />
+            Add goal
+          </Button>
+        )}
       </div>
-      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
-        <div className="flex min-h-[calc(100dvh-12rem)] gap-5 overflow-x-auto pb-4">
-          {columns.map((column) => (
-            <BoardColumn
-              key={column.id}
-              column={column}
-              goals={grouped[column.id] ?? []}
-              boardId={boardId!}
-              onOpenGoal={openGoal}
-            />
-          ))}
-        </div>
-      </DndContext>
 
-      {selectedGoal && (
+      {isAll ? (
+        <MotherBoard onOpenGoal={(goal) => openGoal(goal, goal.board_id)} />
+      ) : detailQuery.isLoading || goalsQuery.isLoading ? (
+        <p className="text-sm text-muted">Loading your board…</p>
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+          <div className="flex min-h-[calc(100dvh-12rem)] gap-5 overflow-x-auto pb-4">
+            {columns.map((column) => (
+              <BoardColumn
+                key={column.id}
+                column={column}
+                goals={grouped[column.id] ?? []}
+                boardId={boardId!}
+                onOpenGoal={(goal) => openGoal(goal, boardId!)}
+              />
+            ))}
+          </div>
+        </DndContext>
+      )}
+
+      {detail && goalQuery.data && (
         <GoalDetailPanel
-          goal={selectedGoal}
-          boardId={boardId!}
-          onClose={() => setSelectedGoalId(null)}
+          goal={goalQuery.data}
+          boardId={detail.boardId}
+          unlockToken={detail.token}
+          onClose={() => setDetail(null)}
         />
       )}
 
-      {unlockingGoalId && (
+      {unlocking && (
         <UnlockModal
-          onClose={() => setUnlockingGoalId(null)}
+          onClose={() => setUnlocking(null)}
           onUnlocked={(token) => {
-            setRevealed({ goalId: unlockingGoalId, token })
-            setUnlockingGoalId(null)
+            setDetail({ goalId: unlocking.goalId, boardId: unlocking.boardId, token })
+            setUnlocking(null)
           }}
         />
       )}
 
-      {revealed && revealedGoalQuery.data && (
-        <GoalDetailPanel
-          goal={revealedGoalQuery.data}
-          boardId={boardId!}
-          unlockToken={revealed.token}
-          onClose={() => setRevealed(null)}
-        />
-      )}
-
-      {showAddGoal && (
-        <AddGoalModal boardId={boardId!} columns={columns} onClose={() => setShowAddGoal(false)} />
+      {showAddGoal && boardId && (
+        <AddGoalModal boardId={boardId} columns={columns} onClose={() => setShowAddGoal(false)} />
       )}
     </div>
   )

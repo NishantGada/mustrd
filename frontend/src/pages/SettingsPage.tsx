@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { Field } from '@/components/ui/Field'
 import { Input } from '@/components/ui/Input'
 import { useAuth } from '@/features/auth/AuthContext'
+import { BoardManagement } from '@/features/board/BoardManagement'
 import { setPasscodeRequest } from '@/features/security/api'
 import { apiErrorMessage } from '@/lib/api'
 
@@ -49,10 +50,10 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto max-w-3xl space-y-6">
       <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
 
-      <div className="mt-6 rounded-[var(--radius)] border border-border bg-surface p-5">
+      <div className="rounded-[var(--radius)] border border-border bg-surface p-5">
         <h2 className="text-sm font-semibold text-content">Private goal passcode</h2>
         <p className="mt-1 text-sm text-muted">
           {hasPasscode
@@ -94,6 +95,8 @@ export function SettingsPage() {
           </Button>
         </form>
       </div>
+
+      <BoardManagement />
     </div>
   )
 }

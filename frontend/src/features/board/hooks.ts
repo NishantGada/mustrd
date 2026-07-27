@@ -2,15 +2,23 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import type { Goal } from '@/types'
 
+import type { ColumnKind } from '@/types'
+
 import {
+  addColumn,
   createBoard,
   createGoal,
+  deleteBoard,
+  deleteColumn,
   deleteGoal,
   fetchBoardDetail,
   fetchBoardGoals,
   fetchBoards,
   fetchGoal,
   moveGoal,
+  reorderColumns,
+  updateBoard,
+  updateColumn,
   updateGoal,
   type CreateGoalBody,
   type MoveGoalBody,
@@ -34,6 +42,66 @@ export function useCreateBoard() {
   return useMutation({
     mutationFn: (name: string) => createBoard(name),
     onSuccess: () => qc.invalidateQueries({ queryKey: boardKeys.boards }),
+  })
+}
+
+export function useUpdateBoard() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ boardId, name }: { boardId: string; name: string }) =>
+      updateBoard(boardId, name),
+    onSuccess: (board) => {
+      qc.invalidateQueries({ queryKey: boardKeys.boards })
+      qc.invalidateQueries({ queryKey: boardKeys.detail(board.id) })
+    },
+  })
+}
+
+export function useDeleteBoard() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (boardId: string) => deleteBoard(boardId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: boardKeys.boards }),
+  })
+}
+
+export function useAddColumn(boardId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => addColumn(boardId, name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: boardKeys.detail(boardId) }),
+  })
+}
+
+export function useUpdateColumn(boardId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ columnId, body }: { columnId: string; body: { name?: string; kind?: ColumnKind } }) =>
+      updateColumn(columnId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: boardKeys.detail(boardId) })
+      // A Done-status flip changes completion, so goals + metrics can shift.
+      qc.invalidateQueries({ queryKey: boardKeys.goals(boardId) })
+    },
+  })
+}
+
+export function useDeleteColumn(boardId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (columnId: string) => deleteColumn(columnId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: boardKeys.detail(boardId) })
+      qc.invalidateQueries({ queryKey: boardKeys.goals(boardId) })
+    },
+  })
+}
+
+export function useReorderColumns(boardId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (orderedIds: string[]) => reorderColumns(boardId, orderedIds),
+    onSuccess: () => qc.invalidateQueries({ queryKey: boardKeys.detail(boardId) }),
   })
 }
 

@@ -6,11 +6,14 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.time import utcnow
 from app.models.board import Board
 from app.models.column import BoardColumn
-from app.models.enums import ColumnKind
+from app.models.enums import ColumnKind, GoalEventType
+from app.models.event import GoalEvent
 from app.models.user import User
 from app.repositories.board_repository import BoardRepository
+from app.repositories.goal_repository import GoalRepository
 from app.schemas.board import BoardCreate, BoardUpdate, ColumnCreate, ColumnUpdate
 
 # The default board every new user starts with.
@@ -107,11 +110,44 @@ class BoardService:
         column = await self._owned_column(column_id, user)
         if data.name is not None:
             column.name = data.name
-        if data.kind is not None:
+        if data.kind is not None and data.kind != column.kind:
+            await self._apply_kind_change(column, data.kind, user)
             column.kind = data.kind
         await self.db.flush()
         await self.db.refresh(column)
         return column
+
+    async def _apply_kind_change(
+        self, column: BoardColumn, new_kind: ColumnKind, user: User
+    ) -> None:
+        """Keep completion state consistent when a column's Done-status flips, so
+        goals already sitting in it get (or lose) completed_at + a logged event."""
+        goals = await GoalRepository(self.db).list_for_column(column.id)
+        now = utcnow()
+        if new_kind == ColumnKind.TERMINAL:
+            for goal in goals:
+                if goal.completed_at is None:
+                    goal.completed_at = now
+                    self.db.add(
+                        GoalEvent(
+                            goal_id=goal.id,
+                            user_id=user.id,
+                            event_type=GoalEventType.COMPLETED,
+                            to_column_id=column.id,
+                        )
+                    )
+        else:  # terminal -> normal: reopen everything in it
+            for goal in goals:
+                if goal.completed_at is not None:
+                    goal.completed_at = None
+                    self.db.add(
+                        GoalEvent(
+                            goal_id=goal.id,
+                            user_id=user.id,
+                            event_type=GoalEventType.REOPENED,
+                            from_column_id=column.id,
+                        )
+                    )
 
     async def delete_column(self, column_id: UUID, user: User) -> None:
         column = await self._owned_column(column_id, user)

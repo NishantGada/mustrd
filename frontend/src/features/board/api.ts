@@ -1,5 +1,5 @@
 import { api, unlockConfig } from '@/lib/api'
-import type { Board, BoardWithColumns, Goal } from '@/types'
+import type { Board, BoardWithColumns, Column, ColumnKind, Goal } from '@/types'
 
 export async function fetchBoards(): Promise<Board[]> {
   const { data } = await api.get<Board[]>('/boards')
@@ -8,6 +8,43 @@ export async function fetchBoards(): Promise<Board[]> {
 
 export async function createBoard(name: string): Promise<Board> {
   const { data } = await api.post<Board>('/boards', { name })
+  return data
+}
+
+export async function updateBoard(boardId: string, name: string): Promise<Board> {
+  const { data } = await api.patch<Board>(`/boards/${boardId}`, { name })
+  return data
+}
+
+export async function deleteBoard(boardId: string): Promise<void> {
+  await api.delete(`/boards/${boardId}`)
+}
+
+export async function addColumn(
+  boardId: string,
+  name: string,
+  kind: ColumnKind = 'normal',
+): Promise<Column> {
+  const { data } = await api.post<Column>(`/boards/${boardId}/columns`, { name, kind })
+  return data
+}
+
+export async function updateColumn(
+  columnId: string,
+  body: { name?: string; kind?: ColumnKind },
+): Promise<Column> {
+  const { data } = await api.patch<Column>(`/columns/${columnId}`, body)
+  return data
+}
+
+export async function deleteColumn(columnId: string): Promise<void> {
+  await api.delete(`/columns/${columnId}`)
+}
+
+export async function reorderColumns(boardId: string, orderedIds: string[]): Promise<Column[]> {
+  const { data } = await api.put<Column[]>(`/boards/${boardId}/columns/order`, {
+    ordered_ids: orderedIds,
+  })
   return data
 }
 

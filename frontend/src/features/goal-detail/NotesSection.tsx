@@ -43,9 +43,13 @@ export function NotesSection({ goalId, unlockToken }: NotesSectionProps) {
       {notesQuery.isLoading && <p className="text-xs text-muted">Loading notes…</p>}
 
       <ul className="space-y-2.5">
-        {notesQuery.data?.map((note) => (
-          <NoteItem key={note.id} goalId={goalId} note={note} unlockToken={unlockToken} />
-        ))}
+        {notesQuery.data
+          ?.slice()
+          // Latest first — ISO 8601 UTC strings sort chronologically.
+          .sort((a, b) => b.created_at.localeCompare(a.created_at))
+          .map((note) => (
+            <NoteItem key={note.id} goalId={goalId} note={note} unlockToken={unlockToken} />
+          ))}
       </ul>
       {notesQuery.data?.length === 0 && <p className="text-xs text-faint">No notes yet.</p>}
     </div>

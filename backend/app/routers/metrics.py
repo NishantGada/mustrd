@@ -1,4 +1,6 @@
 """Profile dashboard metrics endpoint."""
+from uuid import UUID
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +15,9 @@ router = APIRouter(prefix="/metrics", tags=["metrics"])
 
 @router.get("", response_model=MetricsRead)
 async def my_metrics(
-    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+    board_id: UUID | None = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> MetricsRead:
-    return await MetricsService(db).for_user(user)
+    """Metrics across all boards, or scoped to one board via ?board_id=."""
+    return await MetricsService(db).for_user(user, board_id)

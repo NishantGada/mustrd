@@ -16,7 +16,7 @@ from app.models.note import GoalNote
 from app.models.user import User
 from app.repositories.board_repository import BoardRepository
 from app.repositories.goal_repository import GoalRepository
-from app.schemas.goal import GoalCreate, GoalMove, GoalRead, GoalUpdate
+from app.schemas.goal import GoalCreate, GoalMove, GoalRead, GoalUpdate, GoalWithContext
 
 _GOAL_NOT_FOUND = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Goal not found.")
 _NOTE_NOT_FOUND = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found.")
@@ -89,9 +89,23 @@ class GoalService:
         if goal.is_secured and not unlocked:
             raise _LOCKED
 
+    @staticmethod
+    def to_context_read(goal: Goal, unlocked: bool) -> GoalWithContext:
+        """Masked read + the goal's column and board names (aggregate view)."""
+        base = GoalService.to_read(goal, unlocked)
+        return GoalWithContext(
+            **base.model_dump(),
+            column_name=goal.column.name,
+            board_id=goal.column.board_id,
+            board_name=goal.column.board.name,
+        )
+
     async def get(self, goal_id: UUID, user: User) -> Goal:
         """Fetch a single owned goal. Masking is applied by the caller via to_read."""
         return await self._owned_goal(goal_id, user)
+
+    async def list_all_goals(self, user: User) -> list[Goal]:
+        return await self.repo.list_all_for_user(user.id)
 
     # --- Board listing ---
     async def list_board_goals(self, board_id: UUID, user: User) -> list[Goal]:

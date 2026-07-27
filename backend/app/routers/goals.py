@@ -12,6 +12,7 @@ from app.schemas.goal import (
     GoalMove,
     GoalRead,
     GoalUpdate,
+    GoalWithContext,
     NoteCreate,
     NoteRead,
     NoteUpdate,
@@ -30,6 +31,17 @@ async def list_board_goals(
 ) -> list[GoalRead]:
     goals = await GoalService(db).list_board_goals(board_id, user)
     return [GoalService.to_read(g, unlocked) for g in goals]
+
+
+@router.get("/goals/all", response_model=list[GoalWithContext])
+async def list_all_goals(
+    user: User = Depends(get_current_user),
+    unlocked: bool = Depends(get_unlock_state),
+    db: AsyncSession = Depends(get_db),
+) -> list[GoalWithContext]:
+    """Every goal across all boards — the aggregate 'motherboard' view."""
+    goals = await GoalService(db).list_all_goals(user)
+    return [GoalService.to_context_read(g, unlocked) for g in goals]
 
 
 @router.get("/goals/{goal_id}", response_model=GoalRead)

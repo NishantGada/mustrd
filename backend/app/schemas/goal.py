@@ -49,6 +49,13 @@ class GoalRead(BaseModel):
     updated_at: datetime
 
 
+class GoalWithContext(GoalRead):
+    """A goal plus its column/board names — for the aggregate 'all boards' view."""
+    column_name: str
+    board_id: UUID
+    board_name: str
+
+
 # --- Notes ---
 class NoteCreate(BaseModel):
     body: str = Field(min_length=1, max_length=5000)

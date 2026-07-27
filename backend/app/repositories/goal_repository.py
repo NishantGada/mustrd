@@ -5,6 +5,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.column import BoardColumn
 from app.models.event import GoalEvent
@@ -32,6 +33,18 @@ class GoalRepository:
             select(Goal)
             .join(BoardColumn, Goal.column_id == BoardColumn.id)
             .where(BoardColumn.board_id == board_id)
+            .order_by(BoardColumn.position, Goal.position)
+        )
+        return list(result.scalars().all())
+
+    async def list_all_for_user(self, user_id: UUID) -> list[Goal]:
+        """Every goal across all the user's boards, with column + board eagerly
+        loaded for the aggregate ("motherboard") view."""
+        result = await self.db.execute(
+            select(Goal)
+            .join(BoardColumn, Goal.column_id == BoardColumn.id)
+            .where(Goal.user_id == user_id)
+            .options(selectinload(Goal.column).selectinload(BoardColumn.board))
             .order_by(BoardColumn.position, Goal.position)
         )
         return list(result.scalars().all())

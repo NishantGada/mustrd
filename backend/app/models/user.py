@@ -29,8 +29,8 @@ class User(UUIDMixin, TimestampMixin, Base):
         Boolean, nullable=False, default=False, server_default=false()
     )
 
-    boards: Mapped[list[Board]] = relationship(
-        back_populates="owner", cascade="all, delete-orphan", passive_deletes=True
+    board: Mapped[Board | None] = relationship(
+        back_populates="owner", cascade="all, delete-orphan", passive_deletes=True, uselist=False
     )
     goals: Mapped[list[Goal]] = relationship(
         back_populates="owner", cascade="all, delete-orphan", passive_deletes=True

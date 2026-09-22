@@ -6,12 +6,14 @@ from app.models.event import GoalEvent
 from app.models.goal import Goal
 from app.models.note import GoalNote
 from app.models.password_reset import PasswordResetRequest
+from app.models.project import Project
 from app.models.user import User
 
 __all__ = [
     "Base",
     "User",
     "Board",
+    "Project",
     "BoardColumn",
     "Goal",
     "GoalNote",

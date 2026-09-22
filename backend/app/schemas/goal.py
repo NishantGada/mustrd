@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 # --- Goals ---
 class GoalCreate(BaseModel):
     column_id: UUID
+    project_id: UUID | None = None
     title: str = Field(min_length=1, max_length=200)
     description: str | None = None
     score: int = Field(ge=1, le=5)
@@ -18,6 +19,8 @@ class GoalCreate(BaseModel):
 
 
 class GoalUpdate(BaseModel):
+    """Partial update. Send `project_id: null` to move a goal to "No project"."""
+    project_id: UUID | None = None
     title: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = None
     score: int | None = Field(default=None, ge=1, le=5)
@@ -37,6 +40,10 @@ class GoalRead(BaseModel):
 
     id: UUID
     column_id: UUID
+    # Project, number and key are masked too: the key's prefix would reveal the project.
+    project_id: UUID | None
+    number: int | None
+    key: str | None  # e.g. "WORK-12" or "TBD-3"
     title: str
     description: str | None
     score: int | None
@@ -47,14 +54,6 @@ class GoalRead(BaseModel):
     completed_at: datetime | None
     created_at: datetime
     updated_at: datetime
-
-
-class GoalWithContext(GoalRead):
-    """A goal plus its column/board names — for the aggregate 'all boards' view."""
-    column_name: str
-    column_position: int
-    board_id: UUID
-    board_name: str
 
 
 # --- Notes ---

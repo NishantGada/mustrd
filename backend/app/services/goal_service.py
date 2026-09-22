@@ -13,14 +13,20 @@ from app.models.enums import ColumnKind, GoalEventType
 from app.models.event import GoalEvent
 from app.models.goal import Goal
 from app.models.note import GoalNote
+from app.models.project import Project
 from app.models.user import User
 from app.repositories.board_repository import BoardRepository
 from app.repositories.goal_repository import GoalRepository
-from app.schemas.goal import GoalCreate, GoalMove, GoalRead, GoalUpdate, GoalWithContext
+from app.repositories.project_repository import ProjectRepository
+from app.schemas.goal import GoalCreate, GoalMove, GoalRead, GoalUpdate
+from app.schemas.project import UNASSIGNED_KEY
 
 _GOAL_NOT_FOUND = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Goal not found.")
 _NOTE_NOT_FOUND = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found.")
 _COLUMN_NOT_FOUND = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Column not found.")
+_PROJECT_NOT_FOUND = HTTPException(
+    status_code=status.HTTP_404_NOT_FOUND, detail="Project not found."
+)
 _LOCKED = HTTPException(
     status_code=status.HTTP_403_FORBIDDEN,
     detail="This goal is private. Unlock with your passcode to access it.",
@@ -34,8 +40,14 @@ class GoalService:
         self.db = db
         self.repo = GoalRepository(db)
         self.boards = BoardRepository(db)
+        self.projects = ProjectRepository(db)
 
     # --- Serialization / masking ---
+    @staticmethod
+    def key_for(goal: Goal) -> str:
+        prefix = goal.project.key if goal.project is not None else UNASSIGNED_KEY
+        return f"{prefix}-{goal.number}"
+
     @staticmethod
     def to_read(goal: Goal, unlocked: bool) -> GoalRead:
         locked = goal.is_secured and not unlocked
@@ -43,6 +55,9 @@ class GoalService:
             return GoalRead(
                 id=goal.id,
                 column_id=goal.column_id,
+                project_id=None,
+                number=None,
+                key=None,
                 title=MASK_TITLE,
                 description=None,
                 score=None,
@@ -57,6 +72,9 @@ class GoalService:
         return GoalRead(
             id=goal.id,
             column_id=goal.column_id,
+            project_id=goal.project_id,
+            number=goal.number,
+            key=GoalService.key_for(goal),
             title=goal.title,
             description=goal.description,
             score=goal.score,
@@ -89,35 +107,62 @@ class GoalService:
         if goal.is_secured and not unlocked:
             raise _LOCKED
 
-    @staticmethod
-    def to_context_read(goal: Goal, unlocked: bool) -> GoalWithContext:
-        """Masked read + the goal's column and board names (aggregate view)."""
-        base = GoalService.to_read(goal, unlocked)
-        return GoalWithContext(
-            **base.model_dump(),
-            column_name=goal.column.name,
-            column_position=goal.column.position,
-            board_id=goal.column.board_id,
-            board_name=goal.column.board.name,
+    async def _owned_project(self, project_id: UUID, user: User) -> Project:
+        project = await self.projects.get(project_id)
+        if project is None or project.user_id != user.id:
+            raise _PROJECT_NOT_FOUND
+        return project
+
+    async def assign_project(self, goal: Goal, project: Project | None, user: User) -> None:
+        """Put a goal in a project (or none) and give it that sequence's next number.
+        Numbers are never reused, so moving back and forth always yields a fresh key."""
+        if project is None:
+            goal.number = await self.boards.claim_unassigned_number(user.id)
+        else:
+            goal.number = await self.projects.claim_number(project.id)
+        goal.project = project
+
+    def transfer_to_column(
+        self, goal: Goal, target: BoardColumn, source_column_id: UUID | None, user: User
+    ) -> None:
+        """Point a goal at a new column, flipping completion state to match the
+        target column's kind and logging the transition. Positions are the caller's job."""
+        goal.column_id = target.id
+        if target.kind == ColumnKind.TERMINAL and goal.completed_at is None:
+            goal.completed_at = utcnow()
+            event_type = GoalEventType.COMPLETED
+        elif target.kind != ColumnKind.TERMINAL and goal.completed_at is not None:
+            goal.completed_at = None
+            event_type = GoalEventType.REOPENED
+        else:
+            event_type = GoalEventType.MOVED
+        self.repo.add_event(
+            GoalEvent(
+                goal_id=goal.id,
+                user_id=user.id,
+                event_type=event_type,
+                from_column_id=source_column_id,
+                to_column_id=target.id,
+            )
         )
 
     async def get(self, goal_id: UUID, user: User) -> Goal:
         """Fetch a single owned goal. Masking is applied by the caller via to_read."""
         return await self._owned_goal(goal_id, user)
 
-    async def list_all_goals(self, user: User) -> list[Goal]:
-        return await self.repo.list_all_for_user(user.id)
-
     # --- Board listing ---
-    async def list_board_goals(self, board_id: UUID, user: User) -> list[Goal]:
-        board = await self.boards.get(board_id)
-        if board is None or board.user_id != user.id:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Board not found.")
-        return await self.repo.list_for_board(board_id)
+    async def list_board_goals(self, user: User) -> list[Goal]:
+        board = await self.boards.get_for_user(user.id)
+        if board is None:
+            return []
+        return await self.repo.list_for_board(board.id)
 
     # --- CRUD ---
     async def create(self, data: GoalCreate, user: User) -> Goal:
         column = await self._owned_column(data.column_id, user)
+        project = (
+            await self._owned_project(data.project_id, user) if data.project_id else None
+        )
         if data.is_secured and user.security_passcode_hash is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -134,6 +179,7 @@ class GoalService:
             is_secured=data.is_secured,
             position=position,
         )
+        await self.assign_project(goal, project, user)
         completed = column.kind == ColumnKind.TERMINAL
         if completed:
             goal.completed_at = utcnow()
@@ -153,6 +199,11 @@ class GoalService:
     async def update(self, goal_id: UUID, data: GoalUpdate, user: User, unlocked: bool) -> Goal:
         goal = await self._owned_goal(goal_id, user)
         self._require_unlocked(goal, unlocked)
+        if "project_id" in data.model_fields_set and data.project_id != goal.project_id:
+            project = (
+                await self._owned_project(data.project_id, user) if data.project_id else None
+            )
+            await self.assign_project(goal, project, user)
         if data.title is not None:
             goal.title = data.title
         if data.description is not None:
@@ -188,7 +239,6 @@ class GoalService:
         target_goals = [g for g in await self.repo.list_for_column(target.id) if g.id != goal.id]
         pos = max(0, min(data.position, len(target_goals)))
         new_order = target_goals[:pos] + [goal] + target_goals[pos:]
-        goal.column_id = target.id
         for index, g in enumerate(new_order):
             g.position = index
 
@@ -199,25 +249,7 @@ class GoalService:
             ]
             for index, g in enumerate(source_goals):
                 g.position = index
-
-            # Completion transitions driven by the target column's kind.
-            if target.kind == ColumnKind.TERMINAL and goal.completed_at is None:
-                goal.completed_at = utcnow()
-                event_type = GoalEventType.COMPLETED
-            elif target.kind != ColumnKind.TERMINAL and goal.completed_at is not None:
-                goal.completed_at = None
-                event_type = GoalEventType.REOPENED
-            else:
-                event_type = GoalEventType.MOVED
-            self.repo.add_event(
-                GoalEvent(
-                    goal_id=goal.id,
-                    user_id=user.id,
-                    event_type=event_type,
-                    from_column_id=source_column_id,
-                    to_column_id=target.id,
-                )
-            )
+            self.transfer_to_column(goal, target, source_column_id, user)
 
         await self.db.flush()
         await self.db.refresh(goal)

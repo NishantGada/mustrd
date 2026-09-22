@@ -5,7 +5,18 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -15,6 +26,7 @@ if TYPE_CHECKING:
     from app.models.column import BoardColumn
     from app.models.event import GoalEvent
     from app.models.note import GoalNote
+    from app.models.project import Project
     from app.models.user import User
 
 
@@ -22,6 +34,15 @@ class Goal(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "goals"
     __table_args__ = (
         CheckConstraint("score >= 1 AND score <= 5", name="ck_goal_score_range"),
+        UniqueConstraint("project_id", "number", name="uq_goals_project_number"),
+        # Unassigned goals (TBD-n) are numbered per user, not per project.
+        Index(
+            "uq_goals_user_unassigned_number",
+            "user_id",
+            "number",
+            unique=True,
+            postgresql_where=text("project_id IS NULL"),
+        ),
     )
 
     # Denormalized owner FK so ownership checks and per-user metrics avoid deep joins.
@@ -37,6 +58,15 @@ class Goal(UUIDMixin, TimestampMixin, Base):
         index=True,
         nullable=False,
     )
+    # Optional grouping; NULL = "No project" (keyed TBD-n).
+    project_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("projects.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
+    # Ticket number within the project (or within the user's TBD sequence).
+    number: Mapped[int] = mapped_column(Integer, nullable=False)
 
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -52,6 +82,8 @@ class Goal(UUIDMixin, TimestampMixin, Base):
 
     owner: Mapped[User] = relationship(back_populates="goals")
     column: Mapped[BoardColumn] = relationship(back_populates="goals")
+    # Eager so the ticket key (project prefix + number) is always derivable.
+    project: Mapped[Project | None] = relationship(back_populates="goals", lazy="selectin")
     notes: Mapped[list[GoalNote]] = relationship(
         back_populates="goal",
         cascade="all, delete-orphan",

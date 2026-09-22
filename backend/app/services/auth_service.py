@@ -11,10 +11,12 @@ from app.core.security import create_access_token, hash_secret, verify_secret
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import UserCreate
+from app.services.board_service import BoardService
 
 
 class AuthService:
     def __init__(self, db: AsyncSession) -> None:
+        self.db = db
         self.users = UserRepository(db)
 
     async def register(self, data: UserCreate) -> User:
@@ -33,7 +35,10 @@ class AuthService:
             username=data.username,
             password_hash=hash_secret(data.password),
         )
-        return await self.users.add(user)
+        user = await self.users.add(user)
+        # Every account starts with its one board and the default columns.
+        await BoardService(self.db).bootstrap_default(user)
+        return user
 
     async def authenticate(self, email: str, password: str) -> User:
         user = await self.users.get_by_email(email)

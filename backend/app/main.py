@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
-from app.routers import auth, boards, goals, metrics, password_reset, security
+from app.routers import auth, boards, goals, metrics, password_reset, projects, security
 
 settings = get_settings()
 
@@ -27,6 +27,7 @@ app.include_router(auth.router)
 app.include_router(boards.router)
 app.include_router(boards.columns_router)
 app.include_router(goals.router)
+app.include_router(projects.router)
 app.include_router(security.router)
 app.include_router(metrics.router)
 app.include_router(password_reset.router)

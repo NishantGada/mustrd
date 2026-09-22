@@ -11,20 +11,40 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import case, func, select
+from dataclasses import dataclass, field
+
+from sqlalchemy import ColumnElement, case, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.column import BoardColumn
 from app.models.enums import GoalEventType
 from app.models.event import GoalEvent
 from app.models.goal import Goal
+
+
+@dataclass
+class ProjectScope:
+    """Which goals to count. Empty scope (no ids, no unassigned) means every goal."""
+    project_ids: list[UUID] = field(default_factory=list)
+    include_unassigned: bool = False
+
+    @property
+    def is_all(self) -> bool:
+        return not self.project_ids and not self.include_unassigned
+
+    def condition(self) -> ColumnElement[bool]:
+        clauses: list[ColumnElement[bool]] = []
+        if self.project_ids:
+            clauses.append(Goal.project_id.in_(self.project_ids))
+        if self.include_unassigned:
+            clauses.append(Goal.project_id.is_(None))
+        return or_(*clauses) if clauses else false()
 
 
 class MetricsRepository:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def goal_totals(self, user_id: UUID, board_id: UUID | None = None) -> dict[str, float]:
+    async def goal_totals(self, user_id: UUID, scope: ProjectScope) -> dict[str, float]:
         completed = Goal.completed_at.is_not(None)
         stmt = select(
             func.count().label("total"),
@@ -35,10 +55,8 @@ class MetricsRepository:
             ).label("score_completed"),
             func.avg(Goal.score).label("avg_score"),
         ).where(Goal.user_id == user_id)
-        if board_id is not None:
-            stmt = stmt.join(BoardColumn, Goal.column_id == BoardColumn.id).where(
-                BoardColumn.board_id == board_id
-            )
+        if not scope.is_all:
+            stmt = stmt.where(scope.condition())
         result = await self.db.execute(stmt)
         row = result.one()
         return {
@@ -50,7 +68,7 @@ class MetricsRepository:
         }
 
     async def best_month(
-        self, user_id: UUID, board_id: UUID | None = None
+        self, user_id: UUID, scope: ProjectScope
     ) -> tuple[str, int] | None:
         """(YYYY-MM, count) of the calendar month with the most completions, or None."""
         month = func.to_char(
@@ -60,12 +78,9 @@ class MetricsRepository:
             GoalEvent.user_id == user_id,
             GoalEvent.event_type == GoalEventType.COMPLETED,
         )
-        if board_id is not None:
-            stmt = (
-                stmt.join(Goal, GoalEvent.goal_id == Goal.id)
-                .join(BoardColumn, Goal.column_id == BoardColumn.id)
-                .where(BoardColumn.board_id == board_id)
-            )
+        if not scope.is_all:
+            # Scoped by the goal's *current* project.
+            stmt = stmt.join(Goal, GoalEvent.goal_id == Goal.id).where(scope.condition())
         result = await self.db.execute(
             stmt.group_by(month).order_by(func.count().desc(), month.desc()).limit(1)
         )

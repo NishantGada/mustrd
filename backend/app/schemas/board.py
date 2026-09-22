@@ -32,27 +32,15 @@ class ColumnRead(BaseModel):
     updated_at: datetime
 
 
-# --- Boards ---
-class BoardCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=120)
-
-
-class BoardUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=120)
-
-
+# --- Board (one per user) ---
 class BoardRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     name: str
-    position: int
+    columns: list[ColumnRead]
     created_at: datetime
     updated_at: datetime
-
-
-class BoardWithColumns(BoardRead):
-    columns: list[ColumnRead]
 
 
 # --- Reordering ---

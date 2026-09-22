@@ -31,6 +31,7 @@
 
   /* Feedback */
   --danger: #b4433a;
+  --warning: #a8691f; /* due soon */
   --success: #3f8f6b;
 
   /* Score scale (1 = irrelevant → 5 = urgent). Desaturated cool→warm ramp so it
@@ -69,6 +70,7 @@
   --accent-content: #14161a;
 
   --danger: #e07b71;
+  --warning: #d9a45c;
   --success: #6fc09a;
 
   --score-1: #858c98;
@@ -99,6 +101,7 @@
   --color-accent-content: var(--accent-content);
 
   --color-danger: var(--danger);
+  --color-warning: var(--warning);
   --color-success: var(--success);
 
   --color-score-1: var(--score-1);

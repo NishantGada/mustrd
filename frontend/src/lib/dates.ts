@@ -24,6 +24,24 @@ export function formatDueDate(iso: string): string {
   )
 }
 
+/** Due-soon window: due today or within this many days. */
+export const DUE_SOON_DAYS = 3
+
+export type DueStatus = 'overdue' | 'today' | 'soon' | 'later'
+
+/** How a calendar-day due date (stored as UTC midnight) relates to the viewer's
+ *  *local* today. Compared as calendar days, so the time of day never matters. */
+export function dueStatus(iso: string, now: Date = new Date()): { status: DueStatus; days: number } {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
+  const due = Date.UTC(y, m - 1, d)
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+  const days = Math.round((due - today) / 86_400_000)
+  if (days < 0) return { status: 'overdue', days }
+  if (days === 0) return { status: 'today', days }
+  if (days <= DUE_SOON_DAYS) return { status: 'soon', days }
+  return { status: 'later', days }
+}
+
 /** "2026-07" -> "July 2026". */
 export function formatMonth(yyyyMm: string): string {
   const [year, month] = yyyyMm.split('-').map(Number)

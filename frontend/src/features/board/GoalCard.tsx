@@ -7,6 +7,7 @@ import { NO_PROJECT_COLOR } from '@/features/projects/keys'
 import { cn } from '@/lib/cn'
 import type { Goal, Project } from '@/types'
 
+import { DueBadge } from './DueBadge'
 import { ScoreBadge } from './ScoreBadge'
 import { useDeleteGoal } from './hooks'
 
@@ -77,8 +78,11 @@ export function GoalCard({ goal, project, onOpen }: GoalCardProps) {
               {goal.title}
             </p>
           </div>
-          {goal.key && (
-            <p className="mt-2 font-mono text-[11px] tracking-wide text-faint">{goal.key}</p>
+          {(goal.key || goal.due_date) && (
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <span className="font-mono text-[11px] tracking-wide text-faint">{goal.key}</span>
+              {goal.due_date && <DueBadge dueDate={goal.due_date} completed={completed} />}
+            </div>
           )}
           <button
             type="button"

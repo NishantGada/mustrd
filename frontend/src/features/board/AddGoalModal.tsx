@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/Textarea'
 import { ProjectSelect } from '@/features/projects/ProjectSelect'
 import { apiErrorMessage } from '@/lib/api'
 import { cn } from '@/lib/cn'
+import { dateInputToISO } from '@/lib/dates'
 import type { Column, Project } from '@/types'
 
 import { useCreateGoal } from './hooks'
@@ -29,6 +30,7 @@ export function AddGoalModal({ columns, projects, defaultProjectId, onClose }: A
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [score, setScore] = useState(3)
+  const [dueDate, setDueDate] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   function submit(e: React.FormEvent): void {
@@ -43,6 +45,7 @@ export function AddGoalModal({ columns, projects, defaultProjectId, onClose }: A
         title: trimmed,
         score,
         description: description.trim() ? description : null,
+        due_date: dateInputToISO(dueDate),
       },
       {
         onSuccess: onClose,
@@ -75,25 +78,30 @@ export function AddGoalModal({ columns, projects, defaultProjectId, onClose }: A
         <Field label="Project" htmlFor="add-project">
           <ProjectSelect id="add-project" projects={projects} value={projectId} onChange={setProjectId} />
         </Field>
-        <Field label="Score" htmlFor="add-score">
-          <div className="flex gap-1.5">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => setScore(n)}
-                className={cn(
-                  'h-9 w-9 rounded text-sm font-medium transition-colors',
-                  score === n
-                    ? 'bg-primary text-primary-content'
-                    : 'bg-surface-2 text-muted hover:text-content',
-                )}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-        </Field>
+        <div className="flex items-end gap-6">
+          <Field label="Score" htmlFor="add-score">
+            <div className="flex gap-1.5">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setScore(n)}
+                  className={cn(
+                    'h-9 w-9 rounded text-sm font-medium transition-colors',
+                    score === n
+                      ? 'bg-primary text-primary-content'
+                      : 'bg-surface-2 text-muted hover:text-content',
+                  )}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </Field>
+          <Field label="Due date" htmlFor="add-due">
+            <Input id="add-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          </Field>
+        </div>
         {firstColumn && (
           <p className="text-xs text-faint">Added to “{firstColumn.name}”.</p>
         )}

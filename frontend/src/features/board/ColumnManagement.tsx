@@ -4,77 +4,34 @@ import { useConfirm } from '@/components/ConfirmProvider'
 import { ChevronDown, Plus, X } from '@/components/icons'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { cn } from '@/lib/cn'
+import { Modal } from '@/components/ui/Modal'
+import { apiErrorMessage } from '@/lib/api'
 import type { Column } from '@/types'
 
 import {
   useAddColumn,
-  useBoardDetail,
+  useBoard,
   useBoardGoals,
-  useBoards,
-  useDeleteBoard,
   useDeleteColumn,
   useReorderColumns,
-  useUpdateBoard,
   useUpdateColumn,
 } from './hooks'
 
-export function BoardManagement() {
-  const boardsQuery = useBoards()
-  const boards = boardsQuery.data ?? []
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const boardId = selectedId ?? boards[0]?.id
-
-  return (
-    <section className="rounded-[var(--radius)] border border-border bg-surface p-5">
-      <h2 className="text-sm font-semibold text-content">Boards</h2>
-      <p className="mt-1 text-sm text-muted">Rename boards, and edit their columns.</p>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        {boards.map((board) => (
-          <button
-            key={board.id}
-            type="button"
-            onClick={() => setSelectedId(board.id)}
-            className={cn(
-              'rounded-full border px-3 py-1 text-sm transition-colors',
-              board.id === boardId
-                ? 'border-transparent bg-primary text-primary-content'
-                : 'border-border text-muted hover:text-content',
-            )}
-          >
-            {board.name}
-          </button>
-        ))}
-      </div>
-
-      {boardId && (
-        <BoardEditor key={boardId} boardId={boardId} onDeleted={() => setSelectedId(null)} />
-      )}
-    </section>
-  )
-}
-
-function BoardEditor({ boardId, onDeleted }: { boardId: string; onDeleted: () => void }) {
-  const confirm = useConfirm()
-  const detail = useBoardDetail(boardId)
-  const goalsQuery = useBoardGoals(boardId)
-  const updateBoard = useUpdateBoard()
-  const deleteBoard = useDeleteBoard()
-  const addColumn = useAddColumn(boardId)
-  const reorderColumns = useReorderColumns(boardId)
-
-  const [name, setName] = useState('')
+/** Settings section: rename, add, delete, reorder, and mark Done columns on the
+ *  board. Columns are shared by every project. */
+export function ColumnManagement() {
+  const boardQuery = useBoard()
+  const goalsQuery = useBoardGoals()
+  const addColumn = useAddColumn()
+  const reorderColumns = useReorderColumns()
   const [newColumn, setNewColumn] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
-  const board = detail.data
-  const columns = [...(board?.columns ?? [])].sort((a, b) => a.position - b.position)
+  const columns = [...(boardQuery.data?.columns ?? [])].sort((a, b) => a.position - b.position)
   const goalCounts = (goalsQuery.data ?? []).reduce<Record<string, number>>((acc, g) => {
     acc[g.column_id] = (acc[g.column_id] ?? 0) + 1
     return acc
   }, {})
-
-  if (!board) return <p className="mt-4 text-sm text-muted">Loading…</p>
 
   function move(index: number, delta: number): void {
     const next = [...columns]
@@ -84,122 +41,116 @@ function BoardEditor({ boardId, onDeleted }: { boardId: string; onDeleted: () =>
     reorderColumns.mutate(next.map((c) => c.id))
   }
 
-  async function removeBoard(): Promise<void> {
-    const ok = await confirm({
-      title: 'Delete board?',
-      message: `“${board!.name}” and all its columns and goals will be permanently deleted.`,
-      confirmLabel: 'Delete board',
-      danger: true,
-    })
-    if (ok) deleteBoard.mutate(boardId, { onSuccess: onDeleted })
-  }
-
   return (
-    <div className="mt-5 space-y-6 border-t border-border pt-5">
-      {/* Rename / delete board */}
-      <div className="flex items-end gap-2">
-        <div className="flex-1">
-          <label className="mb-1.5 block text-sm font-medium text-content">Board name</label>
-          <Input
-            defaultValue={board.name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={board.name}
-          />
-        </div>
-        <Button
-          variant="outline"
-          onClick={() => name.trim() && updateBoard.mutate({ boardId, name: name.trim() })}
-          disabled={!name.trim() || name.trim() === board.name}
-        >
-          Rename
-        </Button>
-        <Button variant="danger" onClick={() => void removeBoard()}>
-          Delete
-        </Button>
-      </div>
+    <section className="rounded-[var(--radius)] border border-border bg-surface p-5">
+      <h2 className="text-sm font-semibold text-content">Board columns</h2>
+      <p className="mt-1 text-sm text-muted">
+        Shared by every project. At least one column must be marked Done.
+      </p>
 
-      {/* Columns */}
-      <div>
-        <h3 className="mb-2 text-sm font-semibold text-content">Columns</h3>
-        <ul className="space-y-2">
-          {columns.map((column, index) => (
-            <ColumnRow
-              key={column.id}
-              boardId={boardId}
-              column={column}
-              goalCount={goalCounts[column.id] ?? 0}
-              isFirst={index === 0}
-              isLast={index === columns.length - 1}
-              onMoveUp={() => move(index, -1)}
-              onMoveDown={() => move(index, 1)}
+      {!boardQuery.data ? (
+        <p className="mt-4 text-sm text-muted">Loading…</p>
+      ) : (
+        <div className="mt-4">
+          <ul className="space-y-2">
+            {columns.map((column, index) => (
+              <ColumnRow
+                key={column.id}
+                column={column}
+                columns={columns}
+                goalCount={goalCounts[column.id] ?? 0}
+                isFirst={index === 0}
+                isLast={index === columns.length - 1}
+                onMoveUp={() => move(index, -1)}
+                onMoveDown={() => move(index, 1)}
+                onError={setError}
+              />
+            ))}
+          </ul>
+
+          {error && <p className="mt-3 text-sm text-danger">{error}</p>}
+
+          <form
+            className="mt-3 flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              const trimmed = newColumn.trim()
+              if (trimmed) addColumn.mutate(trimmed, { onSuccess: () => setNewColumn('') })
+            }}
+          >
+            <Input
+              value={newColumn}
+              onChange={(e) => setNewColumn(e.target.value)}
+              placeholder="New column name"
+              className="h-9"
             />
-          ))}
-        </ul>
-
-        <form
-          className="mt-3 flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            const trimmed = newColumn.trim()
-            if (trimmed) addColumn.mutate(trimmed, { onSuccess: () => setNewColumn('') })
-          }}
-        >
-          <Input
-            value={newColumn}
-            onChange={(e) => setNewColumn(e.target.value)}
-            placeholder="New column name"
-            className="h-9"
-          />
-          <Button type="submit" size="sm" variant="outline" disabled={!newColumn.trim()}>
-            <Plus width={15} height={15} />
-            Add
-          </Button>
-        </form>
-      </div>
-    </div>
+            <Button type="submit" size="sm" variant="outline" disabled={!newColumn.trim()}>
+              <Plus width={15} height={15} />
+              Add
+            </Button>
+          </form>
+        </div>
+      )}
+    </section>
   )
 }
 
 function ColumnRow({
-  boardId,
   column,
+  columns,
   goalCount,
   isFirst,
   isLast,
   onMoveUp,
   onMoveDown,
+  onError,
 }: {
-  boardId: string
   column: Column
+  columns: Column[]
   goalCount: number
   isFirst: boolean
   isLast: boolean
   onMoveUp: () => void
   onMoveDown: () => void
+  onError: (message: string | null) => void
 }) {
   const confirm = useConfirm()
-  const updateColumn = useUpdateColumn(boardId)
-  const deleteColumn = useDeleteColumn(boardId)
+  const updateColumn = useUpdateColumn()
+  const deleteColumn = useDeleteColumn()
   const [name, setName] = useState(column.name)
+  const [choosingTarget, setChoosingTarget] = useState(false)
+  const onFail = (fallback: string) => (err: unknown) => onError(apiErrorMessage(err, fallback))
 
   function saveName(): void {
     const trimmed = name.trim()
     if (trimmed && trimmed !== column.name) {
-      updateColumn.mutate({ columnId: column.id, body: { name: trimmed } })
+      onError(null)
+      updateColumn.mutate(
+        { columnId: column.id, body: { name: trimmed } },
+        { onError: onFail('Could not rename the column.') },
+      )
     }
   }
 
   async function remove(): Promise<void> {
+    onError(null)
+    // Goals are never deleted with a column — ask where they should go instead.
+    if (goalCount > 0) {
+      setChoosingTarget(true)
+      return
+    }
     const ok = await confirm({
       title: 'Delete column?',
-      message:
-        goalCount > 0
-          ? `“${column.name}” has ${goalCount} goal${goalCount === 1 ? '' : 's'}, which will also be permanently deleted.`
-          : `Delete the empty “${column.name}” column.`,
+      message: `Delete the empty “${column.name}” column.`,
       confirmLabel: 'Delete column',
       danger: true,
     })
-    if (ok) deleteColumn.mutate(column.id)
+    if (ok) {
+      deleteColumn.mutate(
+        { columnId: column.id },
+        { onError: onFail('Could not delete the column.') },
+      )
+    }
   }
 
   return (
@@ -237,12 +188,13 @@ function ColumnRow({
         <input
           type="checkbox"
           checked={column.kind === 'terminal'}
-          onChange={(e) =>
-            updateColumn.mutate({
-              columnId: column.id,
-              body: { kind: e.target.checked ? 'terminal' : 'normal' },
-            })
-          }
+          onChange={(e) => {
+            onError(null)
+            updateColumn.mutate(
+              { columnId: column.id, body: { kind: e.target.checked ? 'terminal' : 'normal' } },
+              { onError: onFail('Could not update the column.') },
+            )
+          }}
         />
         Done column
       </label>
@@ -259,6 +211,78 @@ function ColumnRow({
       >
         <X width={15} height={15} />
       </button>
+
+      {choosingTarget && (
+        <MoveGoalsModal
+          column={column}
+          goalCount={goalCount}
+          targets={columns.filter((c) => c.id !== column.id)}
+          onClose={() => setChoosingTarget(false)}
+        />
+      )}
     </li>
+  )
+}
+
+/** Deleting a non-empty column: pick where its goals go, then delete. */
+function MoveGoalsModal({
+  column,
+  goalCount,
+  targets,
+  onClose,
+}: {
+  column: Column
+  goalCount: number
+  targets: Column[]
+  onClose: () => void
+}) {
+  const deleteColumn = useDeleteColumn()
+  const [moveTo, setMoveTo] = useState(targets[0]?.id ?? '')
+  const [error, setError] = useState<string | null>(null)
+
+  function submit(e: React.FormEvent): void {
+    e.preventDefault()
+    if (!moveTo) return
+    setError(null)
+    deleteColumn.mutate(
+      { columnId: column.id, moveTo },
+      {
+        onSuccess: onClose,
+        onError: (err) => setError(apiErrorMessage(err, 'Could not delete the column.')),
+      },
+    )
+  }
+
+  return (
+    <Modal title={`Delete “${column.name}”?`} onClose={onClose}>
+      <form onSubmit={submit} className="space-y-4">
+        <p className="text-sm text-muted">
+          It has {goalCount} goal{goalCount === 1 ? '' : 's'}. Choose a column to move{' '}
+          {goalCount === 1 ? 'it' : 'them'} to — nothing gets deleted except the column.
+        </p>
+        <select
+          value={moveTo}
+          onChange={(e) => setMoveTo(e.target.value)}
+          aria-label="Move goals to"
+          className="h-10 w-full rounded border border-border bg-surface px-3 text-sm text-content focus:border-accent focus:outline-none"
+        >
+          {targets.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+              {t.kind === 'terminal' ? ' (Done)' : ''}
+            </option>
+          ))}
+        </select>
+        {error && <p className="text-sm text-danger">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="danger" disabled={!moveTo || deleteColumn.isPending}>
+            {deleteColumn.isPending ? 'Deleting…' : 'Move goals & delete'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }

@@ -5,22 +5,26 @@ import { Field } from '@/components/ui/Field'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { Textarea } from '@/components/ui/Textarea'
+import { ProjectSelect } from '@/features/projects/ProjectSelect'
 import { apiErrorMessage } from '@/lib/api'
 import { cn } from '@/lib/cn'
-import type { Column } from '@/types'
+import type { Column, Project } from '@/types'
 
 import { useCreateGoal } from './hooks'
 
 interface AddGoalModalProps {
-  boardId: string
   columns: Column[]
+  projects: Project[]
+  /** Preselected project (e.g. when the board is filtered to exactly one). */
+  defaultProjectId?: string
   onClose: () => void
 }
 
-export function AddGoalModal({ boardId, columns, onClose }: AddGoalModalProps) {
+export function AddGoalModal({ columns, projects, defaultProjectId, onClose }: AddGoalModalProps) {
   // New goals always start in the first column (e.g. "To Do").
   const firstColumn = [...columns].sort((a, b) => a.position - b.position)[0]
-  const create = useCreateGoal(boardId)
+  const create = useCreateGoal()
+  const [projectId, setProjectId] = useState(defaultProjectId ?? '')
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -35,6 +39,7 @@ export function AddGoalModal({ boardId, columns, onClose }: AddGoalModalProps) {
     create.mutate(
       {
         column_id: firstColumn.id,
+        project_id: projectId || null,
         title: trimmed,
         score,
         description: description.trim() ? description : null,
@@ -66,6 +71,9 @@ export function AddGoalModal({ boardId, columns, onClose }: AddGoalModalProps) {
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Optional details…"
           />
+        </Field>
+        <Field label="Project" htmlFor="add-project">
+          <ProjectSelect id="add-project" projects={projects} value={projectId} onChange={setProjectId} />
         </Field>
         <Field label="Score" htmlFor="add-score">
           <div className="flex gap-1.5">

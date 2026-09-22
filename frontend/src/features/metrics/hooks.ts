@@ -2,9 +2,10 @@ import { useQuery } from '@tanstack/react-query'
 
 import { fetchMetrics } from './api'
 
-export function useMetrics(boardId?: string) {
+export function useMetrics(projects: string[] = []) {
+  const scope = [...projects].sort()
   return useQuery({
-    queryKey: ['metrics', boardId ?? 'all'],
-    queryFn: () => fetchMetrics(boardId),
+    queryKey: ['metrics', ...scope],
+    queryFn: () => fetchMetrics(scope),
   })
 }

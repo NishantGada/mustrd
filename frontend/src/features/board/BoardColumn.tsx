@@ -2,18 +2,18 @@ import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
 import { cn } from '@/lib/cn'
-import type { Column, Goal } from '@/types'
+import type { Column, Goal, Project } from '@/types'
 
 import { GoalCard } from './GoalCard'
 
 interface BoardColumnProps {
   column: Column
   goals: Goal[]
-  boardId: string
+  projectsById: Record<string, Project>
   onOpenGoal: (goal: Goal) => void
 }
 
-export function BoardColumn({ column, goals, boardId, onOpenGoal }: BoardColumnProps) {
+export function BoardColumn({ column, goals, projectsById, onOpenGoal }: BoardColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: `col:${column.id}`,
     data: { type: 'column', columnId: column.id },
@@ -44,7 +44,12 @@ export function BoardColumn({ column, goals, boardId, onOpenGoal }: BoardColumnP
       >
         <SortableContext items={goals.map((g) => g.id)} strategy={verticalListSortingStrategy}>
           {goals.map((goal) => (
-            <GoalCard key={goal.id} goal={goal} boardId={boardId} onOpen={onOpenGoal} />
+            <GoalCard
+              key={goal.id}
+              goal={goal}
+              project={goal.project_id ? projectsById[goal.project_id] : undefined}
+              onOpen={onOpenGoal}
+            />
           ))}
         </SortableContext>
         {goals.length === 0 && (

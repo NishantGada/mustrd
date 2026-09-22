@@ -1,24 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 
-import type { Goal } from '@/types'
-
-import type { ColumnKind } from '@/types'
+import type { ColumnKind, Goal } from '@/types'
 
 import {
   addColumn,
-  createBoard,
   createGoal,
-  deleteBoard,
   deleteColumn,
   deleteGoal,
-  fetchAllGoals,
-  fetchBoardDetail,
+  fetchBoard,
   fetchBoardGoals,
-  fetchBoards,
   fetchGoal,
   moveGoal,
   reorderColumns,
-  updateBoard,
   updateColumn,
   updateGoal,
   type CreateGoalBody,
@@ -28,107 +21,70 @@ import {
 import { reorderGoals } from './ordering'
 
 export const boardKeys = {
-  boards: ['boards'] as const,
-  detail: (id: string) => ['board', id] as const,
-  goals: (id: string) => ['goals', id] as const,
+  board: ['board'] as const,
+  goals: ['goals'] as const,
   goal: (id: string) => ['goal', id] as const,
 }
 
-export function useBoards() {
-  return useQuery({ queryKey: boardKeys.boards, queryFn: fetchBoards })
+const METRICS_KEY = ['metrics'] as const
+
+/** Goals changed: refresh the board's goals and any metrics derived from them. */
+function invalidateGoals(qc: QueryClient): void {
+  qc.invalidateQueries({ queryKey: boardKeys.goals })
+  qc.invalidateQueries({ queryKey: METRICS_KEY })
 }
 
-export function useCreateBoard() {
+export function useBoard() {
+  return useQuery({ queryKey: boardKeys.board, queryFn: fetchBoard })
+}
+
+export function useBoardGoals() {
+  return useQuery({ queryKey: boardKeys.goals, queryFn: fetchBoardGoals })
+}
+
+export function useAddColumn() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (name: string) => createBoard(name),
-    onSuccess: () => qc.invalidateQueries({ queryKey: boardKeys.boards }),
+    mutationFn: (name: string) => addColumn(name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: boardKeys.board }),
   })
 }
 
-export function useUpdateBoard() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ boardId, name }: { boardId: string; name: string }) =>
-      updateBoard(boardId, name),
-    onSuccess: (board) => {
-      qc.invalidateQueries({ queryKey: boardKeys.boards })
-      qc.invalidateQueries({ queryKey: boardKeys.detail(board.id) })
-    },
-  })
-}
-
-export function useDeleteBoard() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (boardId: string) => deleteBoard(boardId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: boardKeys.boards }),
-  })
-}
-
-export function useAddColumn(boardId: string) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (name: string) => addColumn(boardId, name),
-    onSuccess: () => qc.invalidateQueries({ queryKey: boardKeys.detail(boardId) }),
-  })
-}
-
-export function useUpdateColumn(boardId: string) {
+export function useUpdateColumn() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ columnId, body }: { columnId: string; body: { name?: string; kind?: ColumnKind } }) =>
       updateColumn(columnId, body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: boardKeys.detail(boardId) })
+      qc.invalidateQueries({ queryKey: boardKeys.board })
       // A Done-status flip changes completion, so goals + metrics can shift.
-      qc.invalidateQueries({ queryKey: boardKeys.goals(boardId) })
+      invalidateGoals(qc)
     },
   })
 }
 
-export function useDeleteColumn(boardId: string) {
+export function useDeleteColumn() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (columnId: string) => deleteColumn(columnId),
+    mutationFn: ({ columnId, moveTo }: { columnId: string; moveTo?: string }) =>
+      deleteColumn(columnId, moveTo),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: boardKeys.detail(boardId) })
-      qc.invalidateQueries({ queryKey: boardKeys.goals(boardId) })
+      qc.invalidateQueries({ queryKey: boardKeys.board })
+      invalidateGoals(qc)
     },
   })
 }
 
-export function useReorderColumns(boardId: string) {
+export function useReorderColumns() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (orderedIds: string[]) => reorderColumns(boardId, orderedIds),
-    onSuccess: () => qc.invalidateQueries({ queryKey: boardKeys.detail(boardId) }),
+    mutationFn: (orderedIds: string[]) => reorderColumns(orderedIds),
+    onSuccess: () => qc.invalidateQueries({ queryKey: boardKeys.board }),
   })
-}
-
-export function useBoardDetail(boardId: string | undefined) {
-  return useQuery({
-    queryKey: boardKeys.detail(boardId ?? ''),
-    queryFn: () => fetchBoardDetail(boardId!),
-    enabled: Boolean(boardId),
-  })
-}
-
-export function useBoardGoals(boardId: string | undefined) {
-  return useQuery({
-    queryKey: boardKeys.goals(boardId ?? ''),
-    queryFn: () => fetchBoardGoals(boardId!),
-    enabled: Boolean(boardId),
-  })
-}
-
-/** All goals across every board — powers the aggregate "motherboard" view. */
-export function useAllGoals(enabled: boolean) {
-  return useQuery({ queryKey: ['all-goals'], queryFn: fetchAllGoals, enabled })
 }
 
 /** Fetch one goal, optionally revealed with an unlock token. `initialData` lets
- *  a click open the detail instantly (from board/aggregate cache) then refetch.
+ *  a click open the detail instantly (from the board cache) then refetch.
  *  Not cached across unlock/lock states, so a locked goal is never served unmasked. */
 export function useGoal(goalId: string | undefined, unlockToken?: string, initialData?: Goal) {
   return useQuery({
@@ -141,47 +97,38 @@ export function useGoal(goalId: string | undefined, unlockToken?: string, initia
   })
 }
 
-const ALL_GOALS_KEY = ['all-goals'] as const
-
-export function useCreateGoal(boardId: string) {
+export function useCreateGoal() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: CreateGoalBody) => createGoal(body),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: boardKeys.goals(boardId) })
-      qc.invalidateQueries({ queryKey: ALL_GOALS_KEY })
-    },
+    onSuccess: () => invalidateGoals(qc),
   })
 }
 
-export function useUpdateGoal(boardId: string, unlockToken?: string) {
+export function useUpdateGoal(unlockToken?: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ goalId, body }: { goalId: string; body: UpdateGoalBody }) =>
       updateGoal(goalId, body, unlockToken),
     onSuccess: (goal) => {
-      qc.invalidateQueries({ queryKey: boardKeys.goals(boardId) })
+      invalidateGoals(qc)
       qc.invalidateQueries({ queryKey: boardKeys.goal(goal.id) })
-      qc.invalidateQueries({ queryKey: ALL_GOALS_KEY })
     },
   })
 }
 
-export function useDeleteGoal(boardId: string, unlockToken?: string) {
+export function useDeleteGoal(unlockToken?: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (goalId: string) => deleteGoal(goalId, unlockToken),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: boardKeys.goals(boardId) })
-      qc.invalidateQueries({ queryKey: ALL_GOALS_KEY })
-    },
+    onSuccess: () => invalidateGoals(qc),
   })
 }
 
 /** Move with optimistic reordering so the drag feels instant. */
-export function useMoveGoal(boardId: string) {
+export function useMoveGoal() {
   const qc = useQueryClient()
-  const key = boardKeys.goals(boardId)
+  const key = boardKeys.goals
   return useMutation({
     mutationFn: (body: MoveGoalBody) => moveGoal(body),
     onMutate: async (body) => {
@@ -198,6 +145,6 @@ export function useMoveGoal(boardId: string) {
     onError: (_err, _body, context) => {
       if (context?.previous) qc.setQueryData(key, context.previous)
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+    onSettled: () => invalidateGoals(qc),
   })
 }

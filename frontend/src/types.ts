@@ -19,14 +19,6 @@ export interface ResetRequest {
   created_at: string
 }
 
-export interface Board {
-  id: string
-  name: string
-  position: number
-  created_at: string
-  updated_at: string
-}
-
 export interface Column {
   id: string
   board_id: string
@@ -37,13 +29,33 @@ export interface Column {
   updated_at: string
 }
 
-export interface BoardWithColumns extends Board {
+/** The user's single board. */
+export interface Board {
+  id: string
+  name: string
   columns: Column[]
+  created_at: string
+  updated_at: string
+}
+
+/** Groups goals on the board. `key` is the ticket prefix, e.g. WORK → WORK-12. */
+export interface Project {
+  id: string
+  name: string
+  description: string | null
+  key: string
+  color: string
+  created_at: string
+  updated_at: string
 }
 
 export interface Goal {
   id: string
   column_id: string
+  /** Project, number and key are null on locked private goals. */
+  project_id: string | null
+  number: number | null
+  key: string | null
   title: string
   description: string | null
   score: number | null
@@ -54,13 +66,6 @@ export interface Goal {
   completed_at: string | null
   created_at: string
   updated_at: string
-}
-
-export interface GoalWithContext extends Goal {
-  column_name: string
-  column_position: number
-  board_id: string
-  board_name: string
 }
 
 export interface Note {

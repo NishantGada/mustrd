@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { Field } from '@/components/ui/Field'
 import { Input } from '@/components/ui/Input'
 import { useAuth } from '@/features/auth/AuthContext'
-import { BoardManagement } from '@/features/board/BoardManagement'
+import { ColumnManagement } from '@/features/board/ColumnManagement'
 import { setPasscodeRequest } from '@/features/security/api'
 import { apiErrorMessage } from '@/lib/api'
 
@@ -96,7 +96,7 @@ export function SettingsPage() {
         </form>
       </div>
 
-      <BoardManagement />
+      <ColumnManagement />
     </div>
   )
 }

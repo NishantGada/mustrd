@@ -1,31 +1,13 @@
 import { api, unlockConfig } from '@/lib/api'
-import type { Board, BoardWithColumns, Column, ColumnKind, Goal, GoalWithContext } from '@/types'
+import type { Board, Column, ColumnKind, Goal } from '@/types'
 
-export async function fetchBoards(): Promise<Board[]> {
-  const { data } = await api.get<Board[]>('/boards')
+export async function fetchBoard(): Promise<Board> {
+  const { data } = await api.get<Board>('/board')
   return data
 }
 
-export async function createBoard(name: string): Promise<Board> {
-  const { data } = await api.post<Board>('/boards', { name })
-  return data
-}
-
-export async function updateBoard(boardId: string, name: string): Promise<Board> {
-  const { data } = await api.patch<Board>(`/boards/${boardId}`, { name })
-  return data
-}
-
-export async function deleteBoard(boardId: string): Promise<void> {
-  await api.delete(`/boards/${boardId}`)
-}
-
-export async function addColumn(
-  boardId: string,
-  name: string,
-  kind: ColumnKind = 'normal',
-): Promise<Column> {
-  const { data } = await api.post<Column>(`/boards/${boardId}/columns`, { name, kind })
+export async function addColumn(name: string, kind: ColumnKind = 'normal'): Promise<Column> {
+  const { data } = await api.post<Column>('/board/columns', { name, kind })
   return data
 }
 
@@ -37,24 +19,18 @@ export async function updateColumn(
   return data
 }
 
-export async function deleteColumn(columnId: string): Promise<void> {
-  await api.delete(`/columns/${columnId}`)
+/** Delete a column. If it holds goals, `moveTo` names the column they move to. */
+export async function deleteColumn(columnId: string, moveTo?: string): Promise<void> {
+  await api.delete(`/columns/${columnId}`, { params: moveTo ? { move_to: moveTo } : undefined })
 }
 
-export async function reorderColumns(boardId: string, orderedIds: string[]): Promise<Column[]> {
-  const { data } = await api.put<Column[]>(`/boards/${boardId}/columns/order`, {
-    ordered_ids: orderedIds,
-  })
+export async function reorderColumns(orderedIds: string[]): Promise<Column[]> {
+  const { data } = await api.put<Column[]>('/board/columns/order', { ordered_ids: orderedIds })
   return data
 }
 
-export async function fetchBoardDetail(boardId: string): Promise<BoardWithColumns> {
-  const { data } = await api.get<BoardWithColumns>(`/boards/${boardId}`)
-  return data
-}
-
-export async function fetchBoardGoals(boardId: string): Promise<Goal[]> {
-  const { data } = await api.get<Goal[]>(`/boards/${boardId}/goals`)
+export async function fetchBoardGoals(): Promise<Goal[]> {
+  const { data } = await api.get<Goal[]>('/board/goals')
   return data
 }
 
@@ -64,14 +40,9 @@ export async function fetchGoal(goalId: string, unlockToken?: string): Promise<G
   return data
 }
 
-/** Every goal across all boards (with column/board context) for the motherboard. */
-export async function fetchAllGoals(): Promise<GoalWithContext[]> {
-  const { data } = await api.get<GoalWithContext[]>('/goals/all')
-  return data
-}
-
 export interface CreateGoalBody {
   column_id: string
+  project_id?: string | null
   title: string
   score: number
   description?: string | null
@@ -96,6 +67,8 @@ export async function moveGoal({ goalId, ...body }: MoveGoalBody): Promise<Goal>
 }
 
 export interface UpdateGoalBody {
+  /** null moves the goal to "No project". Changing project gives it a new key. */
+  project_id?: string | null
   title?: string
   description?: string | null
   score?: number

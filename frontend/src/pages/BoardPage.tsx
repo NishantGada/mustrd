@@ -12,46 +12,59 @@ import { Plus } from '@/components/icons'
 import { Button } from '@/components/ui/Button'
 import { AddGoalModal } from '@/features/board/AddGoalModal'
 import { BoardColumn } from '@/features/board/BoardColumn'
-import { ALL_BOARDS, BoardSwitcher } from '@/features/board/BoardSwitcher'
-import { MotherBoard } from '@/features/board/MotherBoard'
-import {
-  useBoardDetail,
-  useBoardGoals,
-  useBoards,
-  useGoal,
-  useMoveGoal,
-} from '@/features/board/hooks'
+import { useBoard, useBoardGoals, useGoal, useMoveGoal } from '@/features/board/hooks'
 import { groupByColumn } from '@/features/board/ordering'
 import { GoalDetailPanel } from '@/features/goal-detail/GoalDetailPanel'
+import { NO_PROJECT } from '@/features/projects/keys'
+import { ProjectFilter } from '@/features/projects/ProjectFilter'
+import { useProjects } from '@/features/projects/hooks'
+import { BOARD_FILTER_STORAGE_KEY, useProjectFilter } from '@/features/projects/useProjectFilter'
 import { UnlockModal } from '@/features/security/UnlockModal'
-import type { Goal } from '@/types'
+import type { Goal, Project } from '@/types'
 
 export function BoardPage() {
-  const boardsQuery = useBoards()
-  const boards = useMemo(() => boardsQuery.data ?? [], [boardsQuery.data])
-  const [selection, setSelection] = useState<string | null>(null) // board id | ALL_BOARDS | null(=first)
-  const isAll = selection === ALL_BOARDS
-  const boardId = isAll ? undefined : (selection ?? boards[0]?.id)
+  const boardQuery = useBoard()
+  const goalsQuery = useBoardGoals()
+  const projectsQuery = useProjects()
+  const move = useMoveGoal()
 
-  const detailQuery = useBoardDetail(boardId)
-  const goalsQuery = useBoardGoals(boardId)
-  const move = useMoveGoal(boardId ?? '')
-
-  // Unified goal open/unlock across the board and the motherboard.
-  const [detail, setDetail] = useState<{ goal?: Goal; goalId: string; boardId: string; token?: string } | null>(null)
-  const [unlocking, setUnlocking] = useState<{ goalId: string; boardId: string } | null>(null)
+  const [detail, setDetail] = useState<{ goal?: Goal; goalId: string; token?: string } | null>(null)
+  const [unlockingId, setUnlockingId] = useState<string | null>(null)
   const [showAddGoal, setShowAddGoal] = useState(false)
+  const [storedFilter, setFilter] = useProjectFilter(BOARD_FILTER_STORAGE_KEY)
 
   const goalQuery = useGoal(detail?.goalId, detail?.token, detail?.goal)
 
+  const projects = useMemo(() => projectsQuery.data ?? [], [projectsQuery.data])
+  const projectsById = useMemo(
+    () => Object.fromEntries(projects.map((p) => [p.id, p])) as Record<string, Project>,
+    [projects],
+  )
+  // Drop remembered selections for projects that have since been deleted.
+  const filter = useMemo(
+    () => storedFilter.filter((id) => id === NO_PROJECT || id in projectsById),
+    [storedFilter, projectsById],
+  )
+
   const goals = useMemo(() => goalsQuery.data ?? [], [goalsQuery.data])
+  // Full per-column order — drag positions are computed against this, so hidden
+  // (filtered-out) goals keep their places.
   const grouped = useMemo(() => groupByColumn(goals), [goals])
+  const visibleGrouped = useMemo(() => {
+    if (filter.length === 0) return grouped
+    // A locked goal's project is withheld, so it only shows on the unfiltered board.
+    const matches = (g: Goal) =>
+      !g.is_locked && filter.includes(g.project_id ?? NO_PROJECT)
+    return Object.fromEntries(
+      Object.entries(grouped).map(([columnId, list]) => [columnId, list.filter(matches)]),
+    )
+  }, [grouped, filter])
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
-  function openGoal(goal: Goal, forBoardId: string): void {
-    if (goal.is_locked) setUnlocking({ goalId: goal.id, boardId: forBoardId })
-    else setDetail({ goal, goalId: goal.id, boardId: forBoardId })
+  function openGoal(goal: Goal): void {
+    if (goal.is_locked) setUnlockingId(goal.id)
+    else setDetail({ goal, goalId: goal.id })
   }
 
   function handleDragEnd(event: DragEndEvent): void {
@@ -82,70 +95,66 @@ export function BoardPage() {
     move.mutate({ goalId: activeId, target_column_id: targetColumnId, position: targetIndex })
   }
 
-  if (boardsQuery.isLoading) return <p className="text-sm text-muted">Loading your board…</p>
-  if (boardsQuery.isError) {
-    return <p className="text-sm text-danger">Couldn’t load your boards. Try refreshing.</p>
+  if (boardQuery.isLoading || goalsQuery.isLoading) {
+    return <p className="text-sm text-muted">Loading your board…</p>
+  }
+  if (boardQuery.isError || goalsQuery.isError) {
+    return <p className="text-sm text-danger">Couldn’t load your board. Try refreshing.</p>
   }
 
-  const columns = [...(detailQuery.data?.columns ?? [])].sort((a, b) => a.position - b.position)
+  const columns = [...(boardQuery.data?.columns ?? [])].sort((a, b) => a.position - b.position)
+  const singleProject = filter.length === 1 && filter[0] !== NO_PROJECT ? filter[0] : undefined
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <BoardSwitcher
-          boards={boards}
-          currentBoardId={isAll ? ALL_BOARDS : (boardId ?? '')}
-          onSelect={setSelection}
-        />
-        {!isAll && (
-          <Button onClick={() => setShowAddGoal(true)} disabled={columns.length === 0}>
-            <Plus width={16} height={16} />
-            Add goal
-          </Button>
-        )}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <ProjectFilter projects={projects} selected={filter} onChange={setFilter} />
+        <Button onClick={() => setShowAddGoal(true)} disabled={columns.length === 0}>
+          <Plus width={16} height={16} />
+          Add goal
+        </Button>
       </div>
 
-      {isAll ? (
-        <MotherBoard onOpenGoal={(goal) => openGoal(goal, goal.board_id)} />
-      ) : detailQuery.isLoading || goalsQuery.isLoading ? (
-        <p className="text-sm text-muted">Loading your board…</p>
-      ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
-          <div className="flex min-h-[calc(100dvh-12rem)] gap-5 overflow-x-auto pb-4">
-            {columns.map((column) => (
-              <BoardColumn
-                key={column.id}
-                column={column}
-                goals={grouped[column.id] ?? []}
-                boardId={boardId!}
-                onOpenGoal={(goal) => openGoal(goal, boardId!)}
-              />
-            ))}
-          </div>
-        </DndContext>
-      )}
+      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+        <div className="flex min-h-[calc(100dvh-12rem)] gap-5 overflow-x-auto pb-4">
+          {columns.map((column) => (
+            <BoardColumn
+              key={column.id}
+              column={column}
+              goals={visibleGrouped[column.id] ?? []}
+              projectsById={projectsById}
+              onOpenGoal={openGoal}
+            />
+          ))}
+        </div>
+      </DndContext>
 
       {detail && goalQuery.data && (
         <GoalDetailPanel
           goal={goalQuery.data}
-          boardId={detail.boardId}
+          projects={projects}
           unlockToken={detail.token}
           onClose={() => setDetail(null)}
         />
       )}
 
-      {unlocking && (
+      {unlockingId && (
         <UnlockModal
-          onClose={() => setUnlocking(null)}
+          onClose={() => setUnlockingId(null)}
           onUnlocked={(token) => {
-            setDetail({ goalId: unlocking.goalId, boardId: unlocking.boardId, token })
-            setUnlocking(null)
+            setDetail({ goalId: unlockingId, token })
+            setUnlockingId(null)
           }}
         />
       )}
 
-      {showAddGoal && boardId && (
-        <AddGoalModal boardId={boardId} columns={columns} onClose={() => setShowAddGoal(false)} />
+      {showAddGoal && (
+        <AddGoalModal
+          columns={columns}
+          projects={projects}
+          defaultProjectId={singleProject}
+          onClose={() => setShowAddGoal(false)}
+        />
       )}
     </div>
   )

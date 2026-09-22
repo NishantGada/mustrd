@@ -8,30 +8,32 @@ import { Textarea } from '@/components/ui/Textarea'
 import { X } from '@/components/icons'
 import { useDeleteGoal, useUpdateGoal } from '@/features/board/hooks'
 import { ScoreBadge } from '@/features/board/ScoreBadge'
+import { ProjectSelect } from '@/features/projects/ProjectSelect'
 import { apiErrorMessage } from '@/lib/api'
 import { cn } from '@/lib/cn'
 import { dateInputToISO, formatDateTime, toDateInputValue } from '@/lib/dates'
-import type { Goal } from '@/types'
+import type { Goal, Project } from '@/types'
 
 import { NotesSection } from './NotesSection'
 
 interface GoalDetailPanelProps {
   goal: Goal
-  boardId: string
+  projects: Project[]
   onClose: () => void
   /** Present when viewing a just-unlocked private goal; threads through to edits/notes. */
   unlockToken?: string
 }
 
-export function GoalDetailPanel({ goal, boardId, onClose, unlockToken }: GoalDetailPanelProps) {
+export function GoalDetailPanel({ goal, projects, onClose, unlockToken }: GoalDetailPanelProps) {
   const confirm = useConfirm()
-  const updateGoal = useUpdateGoal(boardId, unlockToken)
-  const deleteGoal = useDeleteGoal(boardId, unlockToken)
+  const updateGoal = useUpdateGoal(unlockToken)
+  const deleteGoal = useDeleteGoal(unlockToken)
 
   const [title, setTitle] = useState(goal.title)
   const [description, setDescription] = useState(goal.description ?? '')
   const [score, setScore] = useState(goal.score ?? 3)
   const [dueDate, setDueDate] = useState(toDateInputValue(goal.due_date))
+  const [projectId, setProjectId] = useState(goal.project_id ?? '')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -39,16 +41,19 @@ export function GoalDetailPanel({ goal, boardId, onClose, unlockToken }: GoalDet
     setDescription(goal.description ?? '')
     setScore(goal.score ?? 3)
     setDueDate(toDateInputValue(goal.due_date))
+    setProjectId(goal.project_id ?? '')
     setError(null)
-  }, [goal.id, goal.title, goal.description, goal.score, goal.due_date])
+  }, [goal.id, goal.title, goal.description, goal.score, goal.due_date, goal.project_id])
 
   // Only allow (and show) a save when something actually changed — avoids the
   // no-op request and the button flashing "Saving…" on an unchanged form.
+  const projectChanged = projectId !== (goal.project_id ?? '')
   const isDirty =
     title !== goal.title ||
     description !== (goal.description ?? '') ||
     score !== (goal.score ?? 3) ||
-    dueDate !== toDateInputValue(goal.due_date)
+    dueDate !== toDateInputValue(goal.due_date) ||
+    projectChanged
 
   function save(): void {
     setError(null)
@@ -60,6 +65,8 @@ export function GoalDetailPanel({ goal, boardId, onClose, unlockToken }: GoalDet
           description: description.trim() ? description : null,
           score,
           due_date: dateInputToISO(dueDate),
+          // Only send on change: a new project means a new ticket number.
+          ...(projectChanged ? { project_id: projectId || null } : {}),
         },
       },
       { onError: (e) => setError(apiErrorMessage(e, 'Could not save changes.')) },
@@ -95,6 +102,9 @@ export function GoalDetailPanel({ goal, boardId, onClose, unlockToken }: GoalDet
       >
         <div className="mb-8 flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5">
+            {goal.key && (
+              <span className="font-mono text-sm font-medium tracking-wide text-muted">{goal.key}</span>
+            )}
             {goal.score != null && <ScoreBadge score={goal.score} />}
             <span className="text-xs text-faint">Created {formatDateTime(goal.created_at)}</span>
           </div>
@@ -153,6 +163,20 @@ export function GoalDetailPanel({ goal, boardId, onClose, unlockToken }: GoalDet
                 />
               </Field>
             </div>
+
+            <Field label="Project" htmlFor="goal-project">
+              <ProjectSelect
+                id="goal-project"
+                projects={projects}
+                value={projectId}
+                onChange={setProjectId}
+              />
+              {projectChanged && (
+                <p className="text-xs text-faint">
+                  Saving gives this goal the next key in its new project.
+                </p>
+              )}
+            </Field>
 
             <label className="flex items-center gap-2 text-sm text-content">
               <input

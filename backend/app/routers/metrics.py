@@ -20,7 +20,7 @@ UNASSIGNED_PARAM = "none"
 async def my_metrics(
     project: list[str] = Query(default=[]),
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> MetricsRead:
     """Metrics across every goal, or scoped via repeated ?project=<id> params.
     ?project=none selects goals without a project."""

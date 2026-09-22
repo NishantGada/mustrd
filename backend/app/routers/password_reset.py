@@ -34,7 +34,7 @@ def _to_read(request: PasswordResetRequest) -> ResetRequestRead:
 # --- Public ---
 @router.post("/requests", response_model=MessageResponse, status_code=status.HTTP_202_ACCEPTED)
 async def request_reset(
-    data: ResetRequestCreate, db: AsyncSession = Depends(get_db)
+    data: ResetRequestCreate, db: AsyncSession = Depends(get_db, scope="function")
 ) -> MessageResponse:
     await PasswordResetService(db).request_reset(data.email)
     return MessageResponse(message=_GENERIC)
@@ -43,7 +43,7 @@ async def request_reset(
 # --- Superuser only ---
 @router.get("/requests", response_model=list[ResetRequestRead])
 async def list_requests(
-    admin: User = Depends(get_current_superuser), db: AsyncSession = Depends(get_db)
+    admin: User = Depends(get_current_superuser), db: AsyncSession = Depends(get_db, scope="function")
 ) -> list[ResetRequestRead]:
     requests = await PasswordResetService(db).list_pending()
     return [_to_read(r) for r in requests]
@@ -53,7 +53,7 @@ async def list_requests(
 async def reject_request(
     request_id: UUID,
     admin: User = Depends(get_current_superuser),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     await PasswordResetService(db).reject(request_id, admin)
 
@@ -63,6 +63,6 @@ async def resolve_request(
     request_id: UUID,
     data: ResolveResetRequest,
     admin: User = Depends(get_current_superuser),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     await PasswordResetService(db).resolve(request_id, data.new_password, admin)

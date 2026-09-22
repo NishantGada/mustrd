@@ -23,7 +23,7 @@ _CREDENTIALS_ERROR = HTTPException(
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(_bearer),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> User:
     payload = decode_access_token(credentials.credentials)
     if payload is None:

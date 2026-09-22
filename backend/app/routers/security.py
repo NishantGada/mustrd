@@ -15,7 +15,7 @@ router = APIRouter(prefix="/security", tags=["security"])
 async def set_passcode(
     data: PasscodeSet,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     await SecurityService(db).set_passcode(user, data)
 
@@ -24,6 +24,6 @@ async def set_passcode(
 async def unlock(
     data: UnlockRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> UnlockResponse:
     return SecurityService(db).unlock(user, data.passcode)

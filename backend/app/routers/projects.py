@@ -15,7 +15,7 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 
 @router.get("", response_model=list[ProjectRead])
 async def list_projects(
-    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db, scope="function")
 ) -> list[ProjectRead]:
     projects = await ProjectService(db).list(user)
     return [ProjectRead.model_validate(p) for p in projects]
@@ -25,7 +25,7 @@ async def list_projects(
 async def create_project(
     data: ProjectCreate,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> ProjectRead:
     project = await ProjectService(db).create(data, user)
     return ProjectRead.model_validate(project)
@@ -35,7 +35,7 @@ async def create_project(
 async def get_project(
     project_id: UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> ProjectRead:
     project = await ProjectService(db).get(project_id, user)
     return ProjectRead.model_validate(project)
@@ -46,7 +46,7 @@ async def update_project(
     project_id: UUID,
     data: ProjectUpdate,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> ProjectRead:
     project = await ProjectService(db).update(project_id, data, user)
     return ProjectRead.model_validate(project)
@@ -56,7 +56,7 @@ async def update_project(
 async def delete_project(
     project_id: UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     """Delete a project. Its goals are kept and move to "No project"."""
     await ProjectService(db).delete(project_id, user)

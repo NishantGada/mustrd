@@ -22,7 +22,13 @@ SessionLocal = async_sessionmaker(
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Yield a session per request; commit on success, roll back on error."""
+    """Yield a session per request; commit on success, roll back on error.
+
+    Always depend on this as `Depends(get_db, scope="function")`: that commits as
+    soon as the endpoint returns, *before* the response is sent. The default
+    ("request") scope commits after the response, so a client's very next request
+    could read stale data — and a failed commit would hide behind a success.
+    """
     async with SessionLocal() as session:
         try:
             yield session

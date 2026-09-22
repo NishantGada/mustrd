@@ -29,7 +29,7 @@ async def my_metrics(
         project_ids = [UUID(p) for p in project if p != UNASSIGNED_PARAM]
     except ValueError:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="project must be a project id or 'none'.",
         )
     return await MetricsService(db).for_user(user, project_ids, include_unassigned)

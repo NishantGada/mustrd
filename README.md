@@ -40,3 +40,15 @@ cd frontend
 npm install
 npm run dev
 ```
+
+### 4. Tests (backend)
+The suite runs the real app in-process against a **separate `mustrd_test` database**. It
+wipes and rebuilds that schema through the Alembic migrations on every run, and refuses to
+run against any database whose name doesn't end in `_test`.
+```
+createdb -p 5433 mustrd_test               # once
+cd backend
+pip install -r requirements-dev.txt
+python -m pytest
+```
+Override the target with `TEST_DATABASE_URL` if needed.

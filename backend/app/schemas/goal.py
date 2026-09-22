@@ -19,7 +19,8 @@ class GoalCreate(BaseModel):
 
 
 class GoalUpdate(BaseModel):
-    """Partial update. Send `project_id: null` to move a goal to "No project"."""
+    """Partial update: omitted fields are left alone. An explicit null clears
+    `description` / `due_date`, and moves the goal to "No project" for `project_id`."""
     project_id: UUID | None = None
     title: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = None

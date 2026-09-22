@@ -206,11 +206,12 @@ class GoalService:
             await self.assign_project(goal, project, user)
         if data.title is not None:
             goal.title = data.title
-        if data.description is not None:
+        # Nullable fields: an explicit null clears them; omitting leaves them alone.
+        if "description" in data.model_fields_set:
             goal.description = data.description
         if data.score is not None:
             goal.score = data.score
-        if data.due_date is not None:
+        if "due_date" in data.model_fields_set:
             goal.due_date = data.due_date
         if data.is_secured is not None:
             if data.is_secured and user.security_passcode_hash is None:

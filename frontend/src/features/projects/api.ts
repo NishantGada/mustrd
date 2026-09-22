@@ -2,6 +2,7 @@ import { api } from '@/lib/api'
 import type { Project } from '@/types'
 
 export interface ProjectBody {
+  parent_id: string | null
   name: string
   description: string | null
   key: string
@@ -28,7 +29,8 @@ export async function updateProject(projectId: string, body: Partial<ProjectBody
   return data
 }
 
-/** Deletes the project only; its goals move to "No project". */
+/** Deletes the project only: subprojects move up a level; goals move to the
+ *  parent project (or "No project" for a top-level one). */
 export async function deleteProject(projectId: string): Promise<void> {
   await api.delete(`/projects/${projectId}`)
 }

@@ -38,9 +38,11 @@ export interface Board {
   updated_at: string
 }
 
-/** Groups goals on the board. `key` is the ticket prefix, e.g. WORK → WORK-12. */
+/** Groups goals on the board. `key` is the ticket prefix, e.g. WORK → WORK-12.
+ *  Projects nest to any depth via `parent_id` (null = top level). */
 export interface Project {
   id: string
+  parent_id: string | null
   name: string
   description: string | null
   key: string

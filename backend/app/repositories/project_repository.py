@@ -29,6 +29,10 @@ class ProjectRepository:
         )
         return result.scalar_one_or_none()
 
+    async def list_children(self, project_id: UUID) -> list[Project]:
+        result = await self.db.execute(select(Project).where(Project.parent_id == project_id))
+        return list(result.scalars().all())
+
     async def claim_number(self, project_id: UUID) -> int:
         """Atomically take the project's next ticket number."""
         result = await self.db.execute(

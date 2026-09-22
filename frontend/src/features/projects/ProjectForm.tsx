@@ -10,27 +10,48 @@ import type { Project } from '@/types'
 
 import type { ProjectBody } from './api'
 import { PRESET_COLORS, suggestKey, validateKey } from './keys'
+import { ProjectSelect } from './ProjectSelect'
+import { withDescendants } from './tree'
 
 interface ProjectFormProps {
   /** Existing project to edit; omit to create. */
   project?: Project
+  /** Every project, for the parent picker. */
+  projects: Project[]
+  /** Preselected parent when creating a subproject. */
+  defaultParentId?: string
   submitLabel: string
   pending: boolean
   error: string | null
   onSubmit: (body: ProjectBody) => void
 }
 
-export function ProjectForm({ project, submitLabel, pending, error, onSubmit }: ProjectFormProps) {
+export function ProjectForm({
+  project,
+  projects,
+  defaultParentId,
+  submitLabel,
+  pending,
+  error,
+  onSubmit,
+}: ProjectFormProps) {
+  const [parentId, setParentId] = useState(project?.parent_id ?? defaultParentId ?? '')
   const [name, setName] = useState(project?.name ?? '')
   const [description, setDescription] = useState(project?.description ?? '')
   const [key, setKey] = useState(project?.key ?? '')
   // New projects suggest a key from the name until the user types their own.
   const [keyTouched, setKeyTouched] = useState(Boolean(project))
-  const [color, setColor] = useState(project?.color ?? PRESET_COLORS[0])
+  // A new subproject starts with its parent's color.
+  const [color, setColor] = useState(
+    project?.color ?? projects.find((p) => p.id === defaultParentId)?.color ?? PRESET_COLORS[0],
+  )
+  // A project can't sit inside itself or its own subprojects.
+  const unavailableParents = project ? withDescendants(projects, [project.id]) : undefined
 
   const keyError = key ? validateKey(key) : null
   const isDirty =
     !project ||
+    parentId !== (project.parent_id ?? '') ||
     name !== project.name ||
     description !== (project.description ?? '') ||
     key !== project.key ||
@@ -46,6 +67,7 @@ export function ProjectForm({ project, submitLabel, pending, error, onSubmit }: 
     e.preventDefault()
     if (!canSubmit) return
     onSubmit({
+      parent_id: parentId || null,
       name: name.trim(),
       description: description.trim() ? description : null,
       key,
@@ -63,6 +85,17 @@ export function ProjectForm({ project, submitLabel, pending, error, onSubmit }: 
           maxLength={80}
           onChange={(e) => changeName(e.target.value)}
           placeholder="e.g. Work"
+        />
+      </Field>
+
+      <Field label="Inside" htmlFor="project-parent">
+        <ProjectSelect
+          id="project-parent"
+          projects={projects}
+          value={parentId}
+          onChange={setParentId}
+          emptyLabel="Nothing — top-level project"
+          exclude={unavailableParents}
         />
       </Field>
 

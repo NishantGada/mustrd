@@ -10,6 +10,7 @@ from app.models.user import User
 from app.repositories.metrics_repository import MetricsRepository, ProjectScope
 from app.repositories.project_repository import ProjectRepository
 from app.schemas.metrics import BestMonth, MetricsRead
+from app.services.project_service import descendant_ids
 
 
 class MetricsService:
@@ -21,14 +22,16 @@ class MetricsService:
         self, user: User, project_ids: list[UUID], include_unassigned: bool
     ) -> MetricsRead:
         """Metrics over all goals, or only those in the given projects (and/or with
-        no project). Unknown or foreign project ids are a 404."""
-        for project_id in project_ids:
-            project = await self.projects.get(project_id)
-            if project is None or project.user_id != user.id:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND, detail="Project not found."
-                )
-        scope = ProjectScope(project_ids=project_ids, include_unassigned=include_unassigned)
+        no project). A project rolls up all of its subprojects. Unknown or foreign
+        project ids are a 404."""
+        owned = await self.projects.list_for_user(user.id)
+        owned_ids = {p.id for p in owned}
+        if any(pid not in owned_ids for pid in project_ids):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found.")
+        scope = ProjectScope(
+            project_ids=sorted(descendant_ids(owned, project_ids)),
+            include_unassigned=include_unassigned,
+        )
 
         totals = await self.repo.goal_totals(user.id, scope)
         best = await self.repo.best_month(user.id, scope)

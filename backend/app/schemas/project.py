@@ -32,6 +32,7 @@ def _normalize_color(value: str) -> str:
 
 
 class ProjectCreate(BaseModel):
+    parent_id: UUID | None = None
     name: str = Field(min_length=1, max_length=80)
     description: str | None = Field(default=None, max_length=2000)
     key: str
@@ -49,7 +50,9 @@ class ProjectCreate(BaseModel):
 
 
 class ProjectUpdate(BaseModel):
-    """Partial update. Send `description: null` to clear it."""
+    """Partial update. Send `description: null` to clear it, `parent_id: null` to
+    make the project top-level."""
+    parent_id: UUID | None = None
     name: str | None = Field(default=None, min_length=1, max_length=80)
     description: str | None = Field(default=None, max_length=2000)
     key: str | None = None
@@ -70,6 +73,7 @@ class ProjectRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    parent_id: UUID | None
     name: str
     description: str | None
     key: str

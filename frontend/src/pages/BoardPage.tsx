@@ -18,6 +18,7 @@ import { GoalDetailPanel } from '@/features/goal-detail/GoalDetailPanel'
 import { NO_PROJECT } from '@/features/projects/keys'
 import { ProjectFilter } from '@/features/projects/ProjectFilter'
 import { useProjects } from '@/features/projects/hooks'
+import { withDescendants } from '@/features/projects/tree'
 import { BOARD_FILTER_STORAGE_KEY, useProjectFilter } from '@/features/projects/useProjectFilter'
 import { UnlockModal } from '@/features/security/UnlockModal'
 import type { Goal, Project } from '@/types'
@@ -52,13 +53,14 @@ export function BoardPage() {
   const grouped = useMemo(() => groupByColumn(goals), [goals])
   const visibleGrouped = useMemo(() => {
     if (filter.length === 0) return grouped
+    // A selected project includes all of its subprojects.
+    const shown = withDescendants(projects, filter)
     // A locked goal's project is withheld, so it only shows on the unfiltered board.
-    const matches = (g: Goal) =>
-      !g.is_locked && filter.includes(g.project_id ?? NO_PROJECT)
+    const matches = (g: Goal) => !g.is_locked && shown.has(g.project_id ?? NO_PROJECT)
     return Object.fromEntries(
       Object.entries(grouped).map(([columnId, list]) => [columnId, list.filter(matches)]),
     )
-  }, [grouped, filter])
+  }, [grouped, filter, projects])
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
